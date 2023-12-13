@@ -14,8 +14,11 @@
     },
     "autoload": {
       "psr-4": {
-        "FASTAPI\\": "src/"
+        "progrmanial\\FASTAPI\\": "src/"
       }
-    }
+    },
+    
+    "minimum-stability": "dev",
+    "prefer-stable": true
   }
   
