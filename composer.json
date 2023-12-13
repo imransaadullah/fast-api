@@ -1,0 +1,21 @@
+{
+    "name": "progrmanial/api_mvc",
+    "description": "Standardised API Management Package",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+      {
+        "name": "Imran Saadullah",
+        "email": "imransaadullah@gmail.com"
+      }
+    ],
+    "require": {
+      "php": "^7.4 || ^8.0"
+    },
+    "autoload": {
+      "psr-4": {
+        "FASTAPI\\": "src/"
+      }
+    }
+  }
+  
