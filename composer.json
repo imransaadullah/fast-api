@@ -1,5 +1,5 @@
 {
-    "name": "progrmanial/api_mvc",
+    "name": "progrmanial/fast-api",
     "description": "Standardised API Management Package",
     "type": "library",
     "license": "MIT",
@@ -17,7 +17,7 @@
         "progrmanial\\FASTAPI\\": "src/"
       }
     },
-    
+
     "minimum-stability": "dev",
     "prefer-stable": true
   }
