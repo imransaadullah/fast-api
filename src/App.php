@@ -45,6 +45,8 @@ class App
             }
         } elseif ($requestMethod === 'POST') {
             $data = $_POST;
+        } elseif ($requestMethod === 'GET') {
+            $data = $_GET;
         }
 
         // Use default value if $data is still null
