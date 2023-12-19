@@ -2,6 +2,7 @@
 namespace FASTAPI;
 
 use FASTAPI\Request;
+use FASTAPI\Response;
 
 class Router
 {
@@ -32,7 +33,8 @@ class Router
         }
 
         // Handle 404 if no route is matched
-        echo json_encode(['error' => 'Not Found'], JSON_PRETTY_PRINT);
+        $response = new Response();
+        $response->setErrorResponse('Unknown Service')->send();
     }
 
     private function convertPatternToRegex($pattern)
