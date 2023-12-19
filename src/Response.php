@@ -45,7 +45,7 @@ class Response
         return $this->body ?? '';
     }
 
-    public function setJsonResponse(array $data, int $statusCode = $this->statusCode): self
+    public function setJsonResponse(array $data, int $statusCode = 200): self
     {
         $this->setHeader('Content-Type', 'application/json')
             ->setBody(json_encode($data))
@@ -55,7 +55,7 @@ class Response
         return $this;
     }
 
-    public function setHtmlResponse(string $html, int $statusCode = $this->statusCode): self
+    public function setHtmlResponse(string $html, int $statusCode = 200): self
     {
         $this->setHeader('Content-Type', 'text/html')
             ->setBody($html)
