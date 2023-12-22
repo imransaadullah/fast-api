@@ -24,6 +24,10 @@ class App
         $this->router->addRoute('POST', $uri, $handler);
     }
 
+    public function getRoutes(){
+        return $this->router->getRoutes();
+    }
+
     public function run()
     {
         $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';

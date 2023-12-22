@@ -44,4 +44,8 @@ class Router
         $pattern = preg_replace('/:([\w-]+)/', '([^\/]+)', $pattern);
         return "/^{$pattern}$/";
     }
+
+    public function getRoutes() {
+        return $this->routes;
+    }
 }
