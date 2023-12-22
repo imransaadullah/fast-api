@@ -188,7 +188,7 @@ class StringMethods
         return $camelCase;
     }
 
-    function replaceDelimiter($str, $oldDelimiter, $newDelimiter) {
+    function replaceString($str, $oldDelimiter, $newDelimiter) {
         $newStr = str_replace($oldDelimiter, $newDelimiter, $str);
         return $newStr;
     }
