@@ -27,7 +27,7 @@ class Router
             ) {
                 array_shift($matches); // Remove the full match
                 $handler = $route['handler'];
-                if (is_callable($handler)) {
+                if (is_callable($handler) && !is_array($handler)) {
                     // If the handler is callable (a closure or function), invoke it
                     $handler($request, ...$matches);
                 } elseif (is_array($handler) && count($handler) === 2 && is_object($handler[0]) && method_exists($handler[0], $handler[1])) {
@@ -45,8 +45,6 @@ class Router
                 
                 return;
             }
-
-            
         }
 
         // Handle 404 if no route is matched
