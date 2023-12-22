@@ -35,7 +35,7 @@ class Router
                     $object = $handler[0];
                     $method = $handler[1];
                     // $object->$method($request, ...$matches);
-                    call_user_func_array([$object, $method], array_merge([$request], $matches))
+                    call_user_func_array([$object, $method], array_merge([$request], $matches));
                 } else {
                     // Handle unknown handler type
                     $response = new Response();
