@@ -181,4 +181,10 @@ class StringMethods
         
         return $result;
     }
+
+    public static function toCamelCase($str) {
+        $words = explode('-', $str);
+        $camelCase = lcfirst(implode('', array_map('ucfirst', $words)));
+        return $camelCase;
+    }
 }
