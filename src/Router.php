@@ -27,9 +27,25 @@ class Router
             ) {
                 array_shift($matches); // Remove the full match
                 $handler = $route['handler'];
-                $handler($request, ...$matches);
+                if (is_callable($handler)) {
+                    // If the handler is callable (a closure or function), invoke it
+                    $handler($request, ...$matches);
+                } elseif (is_array($handler) && count($handler) === 2 && is_object($handler[0]) && method_exists($handler[0], $handler[1])) {
+                    // If the handler is an array [$object, 'method'], invoke the method on the object
+                    $object = $handler[0];
+                    $method = $handler[1];
+                    $object->$method($request, ...$matches);
+                } else {
+                    // Handle unknown handler type
+                    $response = new Response();
+                    $response->setErrorResponse('Unknown Service')->send();
+                }
+                // $handler($request, ...$matches);
+                
                 return;
             }
+
+            
         }
 
         // Handle 404 if no route is matched
