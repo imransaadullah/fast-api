@@ -33,10 +33,22 @@ use FastAPI\Request;
 $app = new App();
 
 $app->get('/', function (Request $request) {
-    echo "Hello, Fast API!";
+    echo json_encode(['message' => 'Welcome to the home page!'], JSON_PRETTY_PRINT);
 });
 
-$app->run(new Request($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']));
+$app->get('/:name/profile', function (Request $request, $name) {
+    echo json_encode(['profile' => $name], JSON_PRETTY_PRINT);
+});
+
+$app->get('/:id/details', function (Request $request, $id) {
+    echo json_encode(['details' => $id], JSON_PRETTY_PRINT);
+});
+
+$app->get('/:date/event', function (Request $request, $date) {
+    echo json_encode(['event' => $date], JSON_PRETTY_PRINT);
+});
+
+$app->run();
 ```
 
 ### Define Routes
