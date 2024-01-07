@@ -63,17 +63,6 @@ $app->post('/submit-form', function (Request $request) {
 });
 ```
 
-### Middleware
-
-```php
-use FastAPI\Middleware\LoggerMiddleware;
-use FastAPI\Middleware\AuthMiddleware;
-
-// Use middleware
-$app->useMiddleware(new LoggerMiddleware());
-$app->useMiddleware(new AuthMiddleware());
-```
-
 ## Documentation
 
 For detailed documentation and examples, please refer to the [official documentation](link-to-documentation).
