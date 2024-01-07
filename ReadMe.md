@@ -6,8 +6,8 @@ Fast API is a lightweight and flexible PHP framework designed for building fast 
 ## Features
 
 - **Expressive Routing:** Define routes easily using a simple and expressive syntax.
-- **Middleware Support:** Implement and use middleware for handling requests at various stages of the application lifecycle.
-- **Dependency Injection:** Promote flexibility and testability by injecting dependencies into your classes.
+- **Middleware Support:** Implement and use middleware for handling requests at various stages of the application lifecycle. __Coming soon__
+- **Dependency Injection:** Promote flexibility and testability by injecting dependencies into your classes. __Coming soon__
 - **PSR-4 Autoloading:** Follows PSR-4 standards for autoloading, ensuring an organized and efficient codebase.
 
 ## Installation
