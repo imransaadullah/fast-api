@@ -19,6 +19,11 @@ class Router
 
     public function dispatch(Request $request)
     {
+        if($request->getMethod() == 'OPTIONS'){
+            $response = new Response();
+            $response->send();
+        }
+        
         foreach ($this->routes as $route) {
             $pattern = $this->convertPatternToRegex($route['uri']);
             if (
@@ -34,14 +39,12 @@ class Router
                     // If the handler is an array [$object, 'method'], invoke the method on the object
                     $object = $handler[0];
                     $method = $handler[1];
-                    // $object->$method($request, ...$matches);
                     call_user_func_array([$object, $method], array_merge([$request], $matches));
                 } else {
                     // Handle unknown handler type
                     $response = new Response();
                     $response->setErrorResponse('Unknown Service')->send();
                 }
-                // $handler($request, ...$matches);
                 
                 return;
             }
