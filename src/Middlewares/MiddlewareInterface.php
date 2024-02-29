@@ -7,5 +7,5 @@ use FASTAPI\Response;
 
 interface MiddlewareInterface {
     public function handle(Request $request, \Closure $next): Response;
-    public function matches(Request $request): bool;
+    // public function matches(Request $request): bool;
 }
