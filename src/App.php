@@ -17,11 +17,13 @@ class App
     public function get($uri, $handler)
     {
         $this->router->addRoute('GET', $uri, $handler);
+        return $this;
     }
 
     public function post($uri, $handler)
     {
         $this->router->addRoute('POST', $uri, $handler);
+        return $this;
     }
 
     public function getRoutes(){
@@ -33,6 +35,7 @@ class App
         $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
         $requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '';
         $requestUri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+        $files = $_FILES;
 
         $data = null;
 
@@ -57,6 +60,7 @@ class App
         $data = $data ?? [];
 
         $request = new Request($requestMethod, $requestUri, $data);
+        
         $this->router->dispatch($request);
     }
 }

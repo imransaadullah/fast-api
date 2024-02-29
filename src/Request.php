@@ -5,7 +5,7 @@ class Request
 {
     private $method;
     private $uri;
-    private $data;
+    private $data; 
 
     public function __construct($method, $uri, $data = [])
     {
@@ -27,5 +27,9 @@ class Request
     public function getData()
     {
         return $this->data;
+    }
+
+    public function getFiles() {
+        return $_FILES;
     }
 }
