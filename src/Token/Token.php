@@ -127,28 +127,34 @@ class Token extends JWT
     /**
      * Sets the path to the private key file for OpenSSL.
      * @param string|null $file The path to the private key file.
+     * @return $this
      */
     public function set_private_key_file_openssl($file = null)
     {
         $this->private_key_file = $file ?? $_ENV['SECRETS_DIR'] . 'private.pem';
+        return $this;
     }
 
     /**
      * Sets the path to the public key file for OpenSSL.
      * @param string|null $file The path to the public key file.
+     * @return $this
      */
     public function set_public_key_file_openssl($file = null)
     {
         $this->public_key_file = $file ?? $_ENV['SECRETS_DIR'] . 'public.pem';
+        return $this;
     }
 
     /**
      * Sets the secret key for HMAC-based encryption.
      * @param string $secret_key The secret key.
+     * @return $this
      */
     public function set_secret_key(string $secret_key)
     {
         $this->secret_key = $secret_key;
+        return $this;
     }
 
     /**
@@ -163,10 +169,12 @@ class Token extends JWT
     /**
      * Sets the algorithm for token generation.
      * @param string $algo The algorithm name.
+     * @return $this
      */
     public function set_algo($algo)
     {
         $this->algo = $algo;
+        return $this;
     }
 
     /**
@@ -239,25 +247,31 @@ class Token extends JWT
     /**
      * Sets the issuer claim (`iss`) in the JWT payload.
      * @param string $issuer The issuer value.
+     * @return $this
      */
     public function set_issuer(string $issuer) {
         $this->issuer = $issuer;
+        return $this;
     }
 
     /**
      * Sets the audience claim (`aud`) in the JWT payload.
      * @param string $audience The audience value.
+     * @return $this
      */
     public function set_audience(string $audience) {
         $this->audience = $audience;
+        return $this;
     }
 
     /**
      * Sets the not-before claim (`nbf`) in the JWT payload.
      * @param int $timestamp The not-before timestamp.
+     * @return $this
      */
     public function set_not_before(int $timestamp) {
         $this->not_before = $timestamp;
+        return $this;
     }
 
     /**
@@ -267,6 +281,7 @@ class Token extends JWT
      */
     public function add_claim(string $name, $value) {
         $this->data[$name] = $value;
+        return $this;
     }
 
     /**
@@ -287,9 +302,10 @@ class Token extends JWT
      * @param int $expiryDelta The amount of time (in seconds) to extend the expiry.
      * @return string The refreshed JWT token.
      */
-    public function refresh(string $token, int $expiryDelta): string {
+    public function refresh(string $token, int $expiryDelta): self {
         if ($this->verify($token)) {
             $this->make((array) $this->data->data, time() + $expiryDelta);
+            return $this;
         }
 
         throw new \Exception("Token does not contain expiry claim.");
@@ -316,9 +332,20 @@ class Token extends JWT
     /**
      * Sets the expiry timestamp for token generation.
      * @param int $timestamp The expiry timestamp.
+     * @return $this
      */
     public function set_expiry($timestamp)
     {
         $this->expiry = $timestamp;
+        return $this;
+    }
+
+    /**
+     * Sets the expiry timestamp for token generation.
+     * @param int $timestamp The expiry timestamp.
+     */
+    public function get_expiry()
+    {
+        return $this->expiry;
     }
 }
