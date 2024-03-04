@@ -14,7 +14,6 @@ class Request
         $this->method = $method;
         $this->uri = $uri;
         $this->data = $data;
-        $this->getHeaders();
     }
 
     public function getMethod()
@@ -42,13 +41,12 @@ class Request
         foreach (getallheaders() as $name => $value) {
             $headers[$name] = $value;
         }
-        $this->$headers = $headers;
         return $headers;
     }
 
     public function getHeader($key)
     {
         $headers = $this->headers;
-        return $headers[$key] ?? null;
+        return $this->getHeaders()[$key] ?? null;
     }
 }
