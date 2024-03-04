@@ -36,13 +36,14 @@ class Request
         return $_FILES;
     }
 
-    private function getHeaders()
+    public function getHeaders()
     {
         $headers = [];
         foreach (getallheaders() as $name => $value) {
             $headers[$name] = $value;
         }
         $this->$headers = $headers;
+        return $headers;
     }
 
     public function getHeader($key)
