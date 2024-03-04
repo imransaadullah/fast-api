@@ -32,9 +32,9 @@ class App
 
     public function run()
     {
-        $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : '';
-        $requestMethod = isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '';
-        $requestUri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        $requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
         $files = $_FILES;
 
         $data = null;
