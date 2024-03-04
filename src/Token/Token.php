@@ -193,7 +193,7 @@ class Token extends JWT
      * @return string The generated JWT token.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function make(array $data = [], $expiry = ''): self
+    public function make(array $data = []): self
     {
         if (!$this->use_ssl && !$this->secret_key)
             throw new \Exception('Secret Key was not set');
@@ -205,7 +205,7 @@ class Token extends JWT
             "aud" => $this->audience,
             "iat" => $this->custom_time->get_timestamp(),
             "nbf" => $this->custom_time->get_timestamp(),
-            "exp" => $expiry ?? $this->expiry,
+            "exp" => $this->expiry,
             "data" => $data
         ];
 
@@ -242,6 +242,42 @@ class Token extends JWT
         }
 
         return $this;
+    }
+
+    /**
+     * Encrypts the token payload.
+     * @param string|array|object $payload The payload to encrypt.
+     * @param string $encryptionKey The encryption key.
+     * @param string $algorithm The encryption algorithm (e.g., AES-256-CBC).
+     * @return string|null The encrypted payload or null on failure.
+     */
+    public function encrypt_token_payload($payload, string $encryptionKey, string $algorithm = 'AES-256-CBC'): ?string {
+        $ivLength = openssl_cipher_iv_length($algorithm);
+        $iv = openssl_random_pseudo_bytes($ivLength);
+        $encryptedPayload = openssl_encrypt(json_encode($payload), $algorithm, $encryptionKey, OPENSSL_RAW_DATA, $iv);
+        if ($encryptedPayload === false) {
+            return null;
+        }
+        return base64_encode($iv . $encryptedPayload);
+    }
+
+    /**
+     * Decrypts the encrypted token payload.
+     * @param string $encryptedPayload The encrypted payload to decrypt.
+     * @param string $encryptionKey The encryption key.
+     * @param string $algorithm The encryption algorithm (e.g., AES-256-CBC).
+     * @return array|object|null The decrypted payload as an array or object, or null on failure.
+     */
+    public function decrypt_token_payload(string $encryptedPayload, string $encryptionKey, string $algorithm = 'AES-256-CBC') {
+        $encryptedPayload = base64_decode($encryptedPayload);
+        $ivLength = openssl_cipher_iv_length($algorithm);
+        $iv = substr($encryptedPayload, 0, $ivLength);
+        $payload = substr($encryptedPayload, $ivLength);
+        $decryptedPayload = openssl_decrypt($payload, $algorithm, $encryptionKey, OPENSSL_RAW_DATA, $iv);
+        if ($decryptedPayload === false) {
+            return null;
+        }
+        return json_decode($decryptedPayload, true);
     }
 
     /**
