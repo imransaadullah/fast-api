@@ -193,7 +193,7 @@ class Token extends JWT
      * @return string The generated JWT token.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function make(array $data = []): self
+    public function make(array $data = [], int $expiry = time()): self
     {
         if (!$this->use_ssl && !$this->secret_key)
             throw new \Exception('Secret Key was not set');
@@ -205,7 +205,7 @@ class Token extends JWT
             "aud" => $this->audience,
             "iat" => $this->custom_time->get_timestamp(),
             "nbf" => $this->custom_time->get_timestamp(),
-            "exp" => $this->expiry,
+            "exp" => $expiry ?? $this->expiry,
             "data" => $data
         ];
 
@@ -340,7 +340,7 @@ class Token extends JWT
      */
     public function refresh(string $token, int $expiryDelta): self {
         if ($this->verify($token)) {
-            $this->make((array) $this->data->data, time() + $expiryDelta);
+            $this->make((array) $this->data->data, $expiryDelta);
             return $this;
         }
 
