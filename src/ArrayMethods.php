@@ -2,6 +2,11 @@
 
 namespace FASTAPI;
 
+/**
+ * Class ArrayMethods
+ * 
+ * Provides static methods for manipulating arrays.
+ */
 class ArrayMethods
 {
     private function __construct()

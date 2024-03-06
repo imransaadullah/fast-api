@@ -1,18 +1,20 @@
+# FastAPI Framework
 
-# Fast API - Lightweight PHP Framework
-
-Fast API is a lightweight and flexible PHP framework designed for building fast and expressive web applications. It provides a simple yet powerful structure to help developers create robust and efficient web solutions.
+FastAPI is a lightweight PHP framework designed to make building APIs fast, simple, and efficient. It provides a set of powerful features and tools to streamline the development process, allowing developers to focus on writing clean and maintainable code.
 
 ## Features
 
-- **Expressive Routing:** Define routes easily using a simple and expressive syntax.
-- **Middleware Support:** Implement and use middleware for handling requests at various stages of the application lifecycle. __Coming soon__
-- **Dependency Injection:** Promote flexibility and testability by injecting dependencies into your classes. __Coming soon__
-- **PSR-4 Autoloading:** Follows PSR-4 standards for autoloading, ensuring an organized and efficient codebase.
+- **Routing**: FastAPI uses a simple and intuitive routing system to define API endpoints and their corresponding handlers.
+- **Middleware**: Middleware can be added to the request-response cycle to perform tasks such as authentication, logging, or request modification.
+- **Dependency Injection**: FastAPI supports dependency injection to manage and inject dependencies into route handlers and middleware.
+- **JWT Token Handling**: The framework includes classes for generating, verifying, and refreshing JWT tokens, making authentication and authorization easy to implement.
+- **Custom Time Handling**: FastAPI provides a custom time class with additional functionalities for date and time manipulation.
+- **Error Handling**: Error handling is built into the framework, allowing developers to handle errors gracefully and return appropriate responses to clients.
+- **Customizable**: FastAPI is highly customizable and can be extended with additional functionality as needed.
 
 ## Installation
 
-Install Fast API in your project using Composer:
+To install FastAPI, simply run:
 
 ```bash
 composer require progrmanial/fast-api
@@ -20,57 +22,109 @@ composer require progrmanial/fast-api
 
 ## Getting Started
 
-### Basic Usage
+### Creating Routes
+
+Routes in FastAPI are defined using the `App` class. Here's an example of defining routes for a simple API:
 
 ```php
-<?php
-
-require 'vendor/autoload.php';
-
-use FastAPI\App;
-use FastAPI\Request;
+use FASTAPI\App;
 
 $app = new App();
 
-$app->get('/', function (Request $request) {
-    echo json_encode(['message' => 'Welcome to the home page!'], JSON_PRETTY_PRINT);
+$app->get('/users', function($request, $response) {
+    // Handle GET request to /users
 });
 
-$app->get('/:name/profile', function (Request $request, $name) {
-    echo json_encode(['profile' => $name], JSON_PRETTY_PRINT);
+$app->post('/users', function($request, $response) {
+    // Handle POST request to /users
 });
 
-$app->get('/:id/details', function (Request $request, $id) {
-    echo json_encode(['details' => $id], JSON_PRETTY_PRINT);
-});
-
-$app->get('/:date/event', function (Request $request, $date) {
-    echo json_encode(['event' => $date], JSON_PRETTY_PRINT);
-});
-
-$app->run();
+// More routes...
 ```
 
-### Define Routes
+### Adding Middleware
+
+Middleware can be added to the request-response cycle using the `addMiddleware` method:
 
 ```php
-$app->get('/about', function (Request $request) {
-    echo "About Us Page";
-});
+use FASTAPI\App;
+use FASTAPI\Middleware\AuthMiddleware;
 
-$app->post('/submit-form', function (Request $request) {
-    // Handle form submission
-});
+$app = new App();
+
+$app->addMiddleware(new AuthMiddleware());
+
+// Define routes...
 ```
 
-## Documentation
+### Generating JWT Tokens
 
-For detailed documentation and examples, please refer to the [official documentation](link-to-documentation).
+FastAPI includes a `Token` class for generating and verifying JWT tokens:
+
+```php
+use FASTAPI\Token\Token;
+
+$token = new Token('audience');
+
+$jwtToken = $token->make(['user_id' => 123]);
+
+// Verify token
+$decodedToken = $token->verify($jwtToken);
+
+// Access token data
+$user_id = $decodedToken->data['user_id'];
+```
+
+### Custom Time Handling
+
+FastAPI provides a `CustomTime` class for handling custom date and time operations:
+
+```php
+use API\CustomTime\CustomTime;
+
+$time = new CustomTime();
+
+$currentTime = $time->get_date();
+```
+
+## Use Cases
+
+### Building RESTful APIs
+
+FastAPI is perfect for building RESTful APIs for web and mobile applications. Its simple routing system and middleware support make it easy to define API endpoints and add functionality such as authentication and error handling.
+
+### Token-based Authentication
+
+With FastAPI's built-in `Token` class, implementing token-based authentication is straightforward. Developers can generate, verify, and refresh JWT tokens with ease, ensuring secure authentication for their APIs.
+
+### Custom Time Manipulation
+
+The `CustomTime` class in FastAPI allows developers to perform various date and time manipulations, such as adding days, weeks, months, or years to a given date, comparing dates, or formatting dates in different formats.
+
+### Error Handling
+
+FastAPI comes with built-in error handling capabilities, allowing developers to handle errors gracefully and return meaningful responses to clients. This ensures a smooth and consistent user experience when interacting with the API.
+
+### Middleware Integration
+
+FastAPI supports middleware integration, enabling developers to add custom middleware to the request-response cycle. This allows for tasks such as authentication, logging, request modification, or response formatting to be easily implemented and applied to specific routes.
+
+### Rapid Prototyping
+
+FastAPI's lightweight and flexible architecture makes it ideal for rapid prototyping of API projects. Developers can quickly define routes, add middleware, and implement functionality without the need for extensive configuration or setup.
+
+### Data Transformation
+
+FastAPI can be used for data transformation tasks such as converting data between different formats (e.g., JSON to XML) or manipulating data structures. Its customizable nature allows developers to easily extend and adapt the framework to suit their specific data transformation needs.
+
+### Real-time Applications
+
+FastAPI can be used to build real-time applications such as chat applications, live updates, or real-time analytics dashboards. Its asynchronous capabilities and event-driven architecture make it well-suited for handling concurrent connections and processing real-time data streams.
 
 ## Contributing
 
-If you'd like to contribute to Fast API, please follow our [contribution guidelines](CONTRIBUTING.md).
+FastAPI is an open-source project, and contributions are welcome! If you'd like to contribute, please fork the repository, make your changes, and submit a pull request. Be sure to follow the project's coding standards and guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+FastAPI is licensed under the MIT License.

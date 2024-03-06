@@ -5,6 +5,11 @@ namespace FASTAPI;
 use FASTAPI\ArrayMethods as ArrayMethods;
 use FASTAPI\StringMethods as StringMethods;
 
+/**
+ * Class Inspector
+ * 
+ * Provides inspection capabilities for classes, properties, and methods using Reflection.
+ */
 class Inspector
 {
 	protected $_class;
@@ -18,41 +23,79 @@ class Inspector
 	protected $_properties = array();
 	protected $_methods = array();
 
+	/**
+     * Inspector constructor.
+     *
+     * @param string $class The name of the class to inspect.
+     */
 	public function __construct($class)
 	{
 		$this->_class = $class;
 	}
 
+	/**
+     * Retrieves the comment block for the inspected class.
+     *
+     * @return string The comment block for the class.
+     */
 	protected function _getClassComment()
 	{
 		$reflection = new \ReflectionClass($this->_class);
 		return $reflection->getDocComment();
 	}
 
+	/**
+     * Retrieves the properties of the inspected class.
+     *
+     * @return array An array of ReflectionProperty objects representing the properties of the class.
+     */
 	protected function _getClassProperties()
 	{
 		$reflection = new \ReflectionClass($this->_class);
 		return $reflection->getProperties();
 	}
 
+	/**
+     * Retrieves the methods of the inspected class.
+     *
+     * @return array An array of ReflectionMethod objects representing the methods of the class.
+     */
 	protected function _getClassMethods()
 	{
 		$reflection = new \ReflectionClass($this->_class);
 		return $reflection->getMethods();
 	}
 
+	/**
+     * Retrieves the comment block for a specified property of the inspected class.
+     *
+     * @param string $property The name of the property.
+     * @return string The comment block for the property.
+     */
 	protected function _getPropertyComment($property)
 	{
 		$reflection = new \ReflectionProperty($this->_class, $property);
 		return $reflection->getDocComment();
 	}
 
+	/**
+     * Retrieves the comment block for a specified method of the inspected class.
+     *
+     * @param string $method The name of the method.
+     * @return string The comment block for the method.
+     */
 	protected function _getMethodComment($method)
 	{
 		$reflection = new \ReflectionMethod($this->_class, $method);
 		return $reflection->getDocComment();
 	}
 
+	/**
+     * Parses the comment block and extracts meta information.
+     *
+     * @param string $comment The comment block to parse.
+     * @return array An array containing the extracted meta information.
+     */
 	protected function _parse($comment)
 	{
 		$meta = array();
@@ -82,6 +125,11 @@ class Inspector
 		return $meta;
 	}
 
+	/**
+     * Retrieves metadata for the inspected class.
+     *
+     * @return array Metadata for the class.
+     */
 	public function getClassMeta()
 	{
 		if (!isset($_meta["class"])) {
@@ -97,6 +145,11 @@ class Inspector
 		return $_meta["class"];
 	}
 
+	/**
+     * Retrieves the properties of the inspected class.
+     *
+     * @return array An array containing the names of the class properties.
+     */
 	public function getClassProperties()
 	{
 		if (!isset($_properties)) {
@@ -110,6 +163,11 @@ class Inspector
 		return $_properties;
 	}
 
+	/**
+     * Retrieves the methods of the inspected class.
+     *
+     * @return array An array containing the names of the class methods.
+     */
 	public function getClassMethods()
 	{
 		if (!isset($_methods)) {
@@ -123,6 +181,12 @@ class Inspector
 		return $_methods;
 	}
 
+	/**
+     * Retrieves metadata for a specified property of the inspected class.
+     *
+     * @param string $property The name of the property.
+     * @return array Metadata for the property.
+     */
 	public function getPropertyMeta($property)
 	{
 		if (!isset($_meta["properties"][$property])) {
@@ -138,6 +202,12 @@ class Inspector
 		return $_meta["properties"][$property];
 	}
 
+	/**
+     * Retrieves metadata for a specified method of the inspected class.
+     *
+     * @param string $method The name of the method.
+     * @return array Metadata for the method.
+     */
 	public function getMethodMeta($method)
 	{
 		if (!isset($_meta["actions"][$method])) {

@@ -1,6 +1,6 @@
 <?php
 
-namespace API\Token;
+namespace FASTAPI\Token;
 
 use \Firebase\JWT\JWT;
 use API\CustomTime\CustomTime;
@@ -16,12 +16,12 @@ class Token extends JWT
     /**
      * @var string Path to the private key file.
      */
-    private $private_key_file = $_ENV['SECRETS_DIR'] . "private.pem";
+    private $private_key_file;
 
     /**
      * @var string Path to the public key file.
      */
-    private $public_key_file = $_ENV['SECRETS_DIR'] . "public.pem";
+    private $public_key_file;
 
     /**
      * @var string Timezone used for token generation.
@@ -97,6 +97,9 @@ class Token extends JWT
         if (!$use_ssl) {
             $this->secret_key = $_ENV['SECRET_KEY'] ?? null;
         }
+
+        $this->private_key_file = $_ENV['SECRETS_DIR'] . "private.pem";
+        $this->public_key_file = $_ENV['SECRETS_DIR'] . "public.pem";
 
         $this->timezone = $_ENV['TIMEZONE'];
         $this->issuer = $_ENV['TOKEN_ISSUER'];

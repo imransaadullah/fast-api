@@ -4,10 +4,22 @@ namespace FASTAPI;
 use FASTAPI\Request;
 use FASTAPI\Response;
 
+/**
+ * The Router class is responsible for routing HTTP requests to appropriate handlers based on the requested URI and method.
+ */
 class Router
 {
+    /** @var array $routes An array to store the registered routes */
     private $routes = [];
 
+    /**
+     * Adds a new route to the router.
+     *
+     * @param string $method The HTTP method of the route (e.g., GET, POST, etc.).
+     * @param string $uri The URI pattern of the route.
+     * @param mixed $handler The handler for the route, which can be a callable or an array containing an object and method name.
+     * @return void
+     */
     public function addRoute($method, $uri, $handler)
     {
         $this->routes[] = [
@@ -17,6 +29,12 @@ class Router
         ];
     }
 
+    /**
+     * Dispatches an incoming HTTP request to the appropriate handler based on the requested URI and method.
+     *
+     * @param Request $request The incoming HTTP request object.
+     * @return void
+     */
     public function dispatch(Request $request)
     {
         if($request->getMethod() == 'OPTIONS'){
@@ -55,6 +73,12 @@ class Router
         $response->setErrorResponse('Unknown Service')->send();
     }
 
+    /**
+     * Converts a URI pattern into a regular expression pattern for route matching.
+     *
+     * @param string $pattern The URI pattern to convert.
+     * @return string The regular expression pattern for route matching.
+     */
     private function convertPatternToRegex($pattern)
     {
         $pattern = preg_quote($pattern, '/');
@@ -63,6 +87,11 @@ class Router
         return "/^{$pattern}$/";
     }
 
+    /**
+     * Retrieves all registered routes.
+     *
+     * @return array An array containing all registered routes.
+     */
     public function getRoutes() {
         return $this->routes;
     }
