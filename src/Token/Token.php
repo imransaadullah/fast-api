@@ -3,7 +3,7 @@
 namespace FASTAPI\Token;
 
 use \Firebase\JWT\JWT;
-use API\CustomTime\CustomTime;
+use FASTAPI\CustomTime\CustomTime;
 
 /**
  * Class Token
