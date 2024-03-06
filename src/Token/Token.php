@@ -196,7 +196,7 @@ class Token extends JWT
      * @return string The generated JWT token.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function make(array $data = [], int $expiry = time()): self
+    public function make(array $data = [], int $expiry = null): self
     {
         if (!$this->use_ssl && !$this->secret_key)
             throw new \Exception('Secret Key was not set');
