@@ -1,6 +1,6 @@
 <?php
 
-namespace API\CustomTime;
+namespace FASTAPI\CustomTime;
 
 use \DateTimeImmutable;
 use \DateTime;
