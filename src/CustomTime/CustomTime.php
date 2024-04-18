@@ -59,8 +59,27 @@ class CustomTime extends DateTimeImmutable{
      * @param string $format The format to use for formatting the time. Defaults to 'H:i:s'.
      * @return string The formatted time string.
      */
-    public function get_time($format = 'H:i:s') {
+    public function get_formated_time($format = 'H:i:s') {
         return $this->date->format($format);
+    }
+
+    /**
+     * Gets the formatted time based on the specified format.
+     * @return string The formatted time string.
+     */
+    public function get_time() {
+        return $this->time;
+    }
+    /**
+     * Gets the formatted time based on the specified format.
+     * @return string The formatted/unfomatted time string.
+     */
+    public static function now($format = '') {
+        $obj = new self();
+        if($format){
+            return $obj->get_formated_time($format);
+        }
+        return $obj->get_time();
     }
 
     /**

@@ -38,8 +38,7 @@ class Router
     public function dispatch(Request $request)
     {
         if($request->getMethod() == 'OPTIONS'){
-            $response = new Response();
-            $response->send();
+            (new Response())->send();
         }
         
         foreach ($this->routes as $route) {
@@ -60,17 +59,14 @@ class Router
                     call_user_func_array([$object, $method], array_merge([$request], $matches));
                 } else {
                     // Handle unknown handler type
-                    $response = new Response();
-                    $response->setErrorResponse('Unknown Service')->send();
+                   (new Response())->setJsonResponse(['error' => 1, 'message' => 'Resource Not Found'], 404)->send();
                 }
                 
                 return;
             }
         }
-
         // Handle 404 if no route is matched
-        $response = new Response();
-        $response->setErrorResponse('Unknown Service')->send();
+        (new Response())->setJsonResponse(['error' => 1, 'message' => 'Method Not Allawed'], 405)->send();
     }
 
     /**

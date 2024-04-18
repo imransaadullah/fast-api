@@ -1,6 +1,6 @@
 # FastAPI Framework
 
-FastAPI is a lightweight PHP framework designed to make building APIs fast, simple, and efficient. It provides a set of powerful features and tools to streamline the development process, allowing developers to focus on writing clean and maintainable code.
+FastPHP is a lightweight PHP framework designed to make building APIs fast, simple, and efficient. It provides a set of powerful features and tools to streamline the development process, allowing developers to focus on writing clean and maintainable code.
 
 ## Features
 
