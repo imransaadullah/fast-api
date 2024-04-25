@@ -54,6 +54,16 @@ class CustomTime extends DateTimeImmutable{
     }
 
     /**
+     * Gets the formatted date based on the specified format.
+     *
+     * @param string|null $format The format to use for formatting the date. Defaults to the class default format.
+     * @return DateTimeImmutable The formatted date string.
+     */
+    public function get_date_instance($format = null) {
+        return $this->date;
+    }
+
+    /**
      * Gets the formatted time based on the specified format.
      *
      * @param string $format The format to use for formatting the time. Defaults to 'H:i:s'.
