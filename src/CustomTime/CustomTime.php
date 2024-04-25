@@ -59,7 +59,7 @@ class CustomTime extends DateTimeImmutable{
      * @param string|null $format The format to use for formatting the date. Defaults to the class default format.
      * @return DateTimeImmutable The formatted date string.
      */
-    public function get_date_instance($format = null) {
+    public function get_date_instance() {
         return $this->date;
     }
 
