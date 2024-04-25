@@ -39,7 +39,7 @@ class CustomTime extends DateTimeImmutable{
      */
     public function __construct($date = 'now') {
         $this->timezone = new DateTimezone($_ENV['TIMEZONE'] ?? 'UTC');
-        $this->date = new parent($date, $this->timezone);
+        $this->date = new parent($date ?? 'now', $this->timezone);
         $this->time = $this->date->getTimestamp();
     }
 
