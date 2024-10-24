@@ -80,7 +80,7 @@ $user_id = $decodedToken->data['user_id'];
 FastAPI provides a `CustomTime` class for handling custom date and time operations:
 
 ```php
-use API\CustomTime\CustomTime;
+use FASTAPI\CustomTime\CustomTime;
 
 $time = new CustomTime();
 
