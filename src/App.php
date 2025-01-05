@@ -13,6 +13,12 @@ class App
     /** @var Router $router The router instance used for routing incoming requests. */
     private $router;
 
+    /** @var callable|null $notFoundHandler A handler for 404 (Not Found) responses. */
+    private $notFoundHandler;
+
+    /** @var array $middlewares List of middleware functions to be executed for every request. */
+    private $middlewares = [];
+
     /**
      * Initializes a new instance of the App class.
      */
@@ -48,11 +54,62 @@ class App
     }
 
     /**
+     * Registers a new route for handling HTTP PUT requests.
+     *
+     * @param string $uri The URI pattern of the route.
+     * @param mixed $handler The handler for the route.
+     * @return App
+     */
+    public function put($uri, $handler)
+    {
+        $this->router->addRoute('PUT', $uri, $handler);
+        return $this;
+    }
+
+    /**
+     * Registers a new route for handling HTTP DELETE requests.
+     *
+     * @param string $uri The URI pattern of the route.
+     * @param mixed $handler The handler for the route.
+     * @return App
+     */
+    public function delete($uri, $handler)
+    {
+        $this->router->addRoute('DELETE', $uri, $handler);
+        return $this;
+    }
+
+    /**
+     * Adds a middleware function to be executed before the request handler.
+     *
+     * @param callable $middleware A function that takes a Request object and can modify it.
+     * @return App
+     */
+    public function use(callable $middleware)
+    {
+        $this->middlewares[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * Sets a handler for 404 Not Found errors.
+     *
+     * @param callable $handler A function to handle 404 responses.
+     * @return App
+     */
+    public function setNotFoundHandler(callable $handler)
+    {
+        $this->notFoundHandler = $handler;
+        return $this;
+    }
+
+    /**
      * Retrieves all registered routes.
      *
      * @return array An array containing all registered routes.
      */
-    public function getRoutes(){
+    public function getRoutes()
+    {
         return $this->router->getRoutes();
     }
 
@@ -78,7 +135,6 @@ class App
 
                 if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
                     // Handle JSON decoding error
-                    // Log the error or take appropriate action
                 }
             }
         } elseif ($requestMethod === 'POST') {
@@ -87,11 +143,19 @@ class App
             $data = $_GET;
         }
 
-        // Use default value if $data is still null
         $data = $data ?? [];
-
         $request = new Request($requestMethod, $requestUri, $data);
-        
-        $this->router->dispatch($request);
+
+        // Execute middlewares
+        foreach ($this->middlewares as $middleware) {
+            $middleware($request);
+        }
+
+        // Dispatch the request
+        $dispatched = $this->router->dispatch($request);
+
+        if (!$dispatched && $this->notFoundHandler) {
+            call_user_func($this->notFoundHandler, $request);
+        }
     }
 }
