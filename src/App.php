@@ -10,6 +10,8 @@ use FASTAPI\Request as Request;
  */
 class App
 {
+    private static $instance = null; // Singleton instance
+    
     /** @var Router $router The router instance used for routing incoming requests. */
     private $router;
 
@@ -18,6 +20,9 @@ class App
 
     /** @var array $middlewares List of middleware functions to be executed for every request. */
     private $middlewares = [];
+    private $rateLimitFile = __DIR__ . '/rate_limit.json'; // File to store rate-limit data
+    private $rateLimitTimeWindow = 60; // 1 minute
+    private $rateLimitMaxRequests = 100;
 
     /**
      * Initializes a new instance of the App class.
@@ -25,6 +30,30 @@ class App
     public function __construct()
     {
         $this->router = new Router();
+    }
+
+    /**
+     * Prevent cloning of the instance.
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of the instance.
+     */
+    private function __wakeup() {}
+
+    /**
+     * Retrieves the singleton instance of the App class.
+     *
+     * @return App The singleton instance.
+     */
+    public static function getInstance()
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
     }
 
     /**
@@ -113,6 +142,72 @@ class App
         return $this->router->getRoutes();
     }
 
+    public function setRateLimit(int $maxRequests, int $timeWindow)
+    {
+        $this->rateLimitMaxRequests = $maxRequests;
+        $this->rateLimitTimeWindow = $timeWindow;
+        return $this;
+    }
+
+    private function rateLimit(Request $request)
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $currentTime = time();
+
+        // Load rate limit data from file
+        $rateData = $this->readRateLimitFile();
+
+        // Check and update rate limit for the current IP
+        if (isset($rateData[$ip])) {
+            $timeDifference = $currentTime - $rateData[$ip]['timestamp'];
+
+            if ($timeDifference > $this->rateLimitTimeWindow) {
+                // Reset count if time window has passed
+                $rateData[$ip] = ['timestamp' => $currentTime, 'count' => 1];
+            } else {
+                // Increment request count within the time window
+                $rateData[$ip]['count']++;
+
+                if ($rateData[$ip]['count'] > $this->rateLimitMaxRequests) {
+                    // Block the request
+                    (new Response())->setJsonResponse(['error' => 1, 'message' => 'Too many requests. Please try again later.'], 429)->send();
+                }
+            }
+        } else {
+            // Initialize rate limit data for the first request
+            $rateData[$ip] = ['timestamp' => $currentTime, 'count' => 1];
+        }
+
+        // Save updated rate limit data back to file
+        $this->writeRateLimitFile($rateData);
+    }
+
+    private function readRateLimitFile()
+    {
+        // Create the file if it doesn't exist
+        if (!file_exists($this->rateLimitFile)) {
+            file_put_contents($this->rateLimitFile, json_encode([]));
+        }
+
+        // Read and decode the file content
+        $data = file_get_contents($this->rateLimitFile);
+        return json_decode($data, true) ?: [];
+    }
+
+    private function writeRateLimitFile(array $rateData)
+    {
+        // Use file locking for concurrency safety
+        $fp = fopen($this->rateLimitFile, 'c+');
+        if (flock($fp, LOCK_EX)) {
+            // Truncate file before writing
+            ftruncate($fp, 0);
+            fwrite($fp, json_encode($rateData));
+            fflush($fp);
+            flock($fp, LOCK_UN);
+        }
+        fclose($fp);
+    }
+
     /**
      * Runs the application, dispatching the incoming HTTP request to the appropriate route handler.
      *
@@ -145,6 +240,9 @@ class App
 
         $data = $data ?? [];
         $request = new Request($requestMethod, $requestUri, $data);
+
+        // Enforce rate limiting
+        $this->rateLimit($request);
 
         // Execute middlewares
         foreach ($this->middlewares as $middleware) {
