@@ -11,7 +11,7 @@ use FASTAPI\Request as Request;
 class App
 {
     private static $instance = null; // Singleton instance
-    
+
     /** @var Router $router The router instance used for routing incoming requests. */
     private $router;
 
@@ -40,7 +40,9 @@ class App
     /**
      * Prevent unserialization of the instance.
      */
-    private function __wakeup() {}
+    public function __wakeup() {
+        throw new \Exception("Cannot unserialize a singleton.");
+    }
 
     /**
      * Retrieves the singleton instance of the App class.
