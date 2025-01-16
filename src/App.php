@@ -2,6 +2,7 @@
 
 namespace FASTAPI;
 
+use FASTAPI\Middlewares\MiddlewareInterface;
 use FASTAPI\Router as Router;
 use FASTAPI\Request as Request;
 
@@ -56,6 +57,11 @@ class App
         }
 
         return self::$instance;
+    }
+
+    public function addMiddleware(MiddlewareInterface $middleware){
+        $this->middlewares[] = $middleware;
+        return $this;
     }
 
     /**
