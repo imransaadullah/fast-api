@@ -41,7 +41,8 @@ class App
     /**
      * Prevent unserialization of the instance.
      */
-    public function __wakeup() {
+    public function __wakeup()
+    {
         throw new \Exception("Cannot unserialize a singleton.");
     }
 
@@ -59,7 +60,8 @@ class App
         return self::$instance;
     }
 
-    public function addMiddleware($middleware){
+    public function addMiddleware($middleware)
+    {
         $this->middlewares[] = $middleware;
         return $this;
     }
@@ -252,16 +254,86 @@ class App
         // Enforce rate limiting
         $this->rateLimit($request);
 
-        // Execute middlewares
-        foreach ($this->middlewares as $middleware) {
-            $middleware($request);
-        }
+        // Execute middlewares using chaining
+        $middlewareIndex = 0;
+        $runner = function ($request) use (&$middlewareIndex, &$runner) {
+            if ($middlewareIndex < count($this->middlewares)) {
+                $middleware = $this->middlewares[$middlewareIndex];
+                $middlewareIndex++;
 
-        // Dispatch the request
+                // If middleware supports chaining (expects $next), pass the runner
+                if (is_callable($middleware)) {
+                    $middleware($request, $runner);
+                } else {
+                    // Legacy middleware handling
+                    $middleware($request);
+                    $runner($request);
+                }
+            } else {
+                // Dispatch the request after middlewares are executed
+                $this->dispatchRequest($request);
+            }
+        };
+
+        // Start the middleware chain
+        $runner($request);
+    }
+
+    /**
+     * Dispatch the request to the router or not found handler.
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function dispatchRequest(Request $request): void
+    {
         $dispatched = $this->router->dispatch($request);
 
         if (!$dispatched && $this->notFoundHandler) {
             call_user_func($this->notFoundHandler, $request);
         }
     }
+    // public function run()
+    // {
+    //     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    //     $requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
+    //     $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    //     $files = $_FILES;
+
+    //     $data = null;
+
+    //     if ($contentType === 'application/json' && $requestMethod && $requestUri) {
+    //         $jsonInput = file_get_contents('php://input');
+
+    //         if ($jsonInput !== false) {
+    //             $data = json_decode($jsonInput, true);
+
+    //             if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+    //                 // Handle JSON decoding error
+    //             }
+    //         }
+    //     } elseif ($requestMethod === 'POST') {
+    //         $data = $_POST;
+    //     } elseif ($requestMethod === 'GET') {
+    //         $data = $_GET;
+    //     }
+
+    //     $data = $data ?? [];
+    //     $request = new Request($requestMethod, $requestUri, $data);
+
+    //     // Enforce rate limiting
+    //     $this->rateLimit($request);
+
+    //     // Execute middlewares
+    //     foreach ($this->middlewares as $middleware) {
+    //         $middleware($request);
+    //     }
+
+    //     // Dispatch the request
+    //     $dispatched = $this->router->dispatch($request);
+
+    //     if (!$dispatched && $this->notFoundHandler) {
+    //         call_user_func($this->notFoundHandler, $request);
+    //     }
+    // }
 }
