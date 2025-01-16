@@ -59,7 +59,7 @@ class App
         return self::$instance;
     }
 
-    public function addMiddleware(MiddlewareInterface $middleware){
+    public function addMiddleware($middleware){
         $this->middlewares[] = $middleware;
         return $this;
     }
