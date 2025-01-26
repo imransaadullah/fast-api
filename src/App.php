@@ -119,6 +119,19 @@ class App
     }
 
     /**
+     * Registers a new route for handling HTTP DELETE requests.
+     *
+     * @param string $uri The URI pattern of the route.
+     * @param mixed $handler The handler for the route.
+     * @return App
+     */
+    public function patch($uri, $handler)
+    {
+        $this->router->addRoute('PATCH', $uri, $handler);
+        return $this;
+    }
+
+    /**
      * Adds a middleware function to be executed before the request handler.
      *
      * @param callable $middleware A function that takes a Request object and can modify it.
