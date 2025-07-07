@@ -5,11 +5,13 @@ FastPHP is a lightweight PHP framework designed to make building APIs fast, simp
 ## Features
 
 - **Routing**: FastAPI uses a simple and intuitive routing system to define API endpoints and their corresponding handlers.
+- **Route Groups**: Organize routes with common prefixes, middleware, and nested structures for better API organization.
 - **Middleware**: Middleware can be added to the request-response cycle to perform tasks such as authentication, logging, or request modification.
 - **Dependency Injection**: FastAPI supports dependency injection to manage and inject dependencies into route handlers and middleware.
 - **JWT Token Handling**: The framework includes classes for generating, verifying, and refreshing JWT tokens, making authentication and authorization easy to implement.
 - **Custom Time Handling**: FastAPI provides a custom time class with additional functionalities for date and time manipulation.
 - **Error Handling**: Error handling is built into the framework, allowing developers to handle errors gracefully and return appropriate responses to clients.
+- **100% Backward Compatible**: All new features are fully backward compatible with existing code.
 - **Customizable**: FastAPI is highly customizable and can be extended with additional functionality as needed.
 
 ## Installation
@@ -24,37 +26,121 @@ composer require progrmanial/fast-api
 
 ### Creating Routes
 
-Routes in FastAPI are defined using the `App` class. Here's an example of defining routes for a simple API:
+Routes in FastAPI are defined using the `Router` class. Here's an example of defining routes for a simple API:
 
 ```php
-use FASTAPI\App;
+use FASTAPI\Router;
+use FASTAPI\Request;
 
-$app = new App();
+$router = new Router();
 
-$app->get('/users', function($request, $response) {
+// Basic routes
+$router->addRoute('GET', '/users', function($request) {
     // Handle GET request to /users
 });
 
-$app->post('/users', function($request, $response) {
+$router->addRoute('POST', '/users', function($request) {
     // Handle POST request to /users
 });
 
-// More routes...
+// Or use convenience methods
+$router->get('/posts', function($request) {
+    // Handle GET request to /posts
+});
+
+$router->post('/posts', function($request) {
+    // Handle POST request to /posts
+});
+```
+
+### Route Groups
+
+Organize related routes with common prefixes and middleware:
+
+```php
+use FASTAPI\Router;
+
+$router = new Router();
+
+// Group routes with common prefix
+$router->group(['prefix' => 'api/v1'], function($router) {
+    $router->get('/users', function($request) {
+        // GET /api/v1/users
+    });
+    
+    $router->post('/users', function($request) {
+        // POST /api/v1/users
+    });
+});
+
+// Group with middleware
+$router->group(['middleware' => [new AuthMiddleware()]], function($router) {
+    $router->get('/profile', function($request) {
+        // Protected route
+    });
+});
+
+// Nested groups with inheritance
+$router->group(['prefix' => 'admin', 'middleware' => [new AuthMiddleware()]], function($router) {
+    $router->get('/dashboard', function($request) {
+        // GET /admin/dashboard (with auth)
+    });
+    
+    $router->group(['middleware' => [new AdminMiddleware()]], function($router) {
+        $router->delete('/users/:id', function($request, $id) {
+            // DELETE /admin/users/:id (with auth + admin)
+        });
+    });
+});
 ```
 
 ### Adding Middleware
 
-Middleware can be added to the request-response cycle using the `addMiddleware` method:
+Middleware can be applied to individual routes or entire route groups:
 
 ```php
-use FASTAPI\App;
-use FASTAPI\Middleware\AuthMiddleware;
+use FASTAPI\Router;
+use FASTAPI\Middlewares\MiddlewareInterface;
 
-$app = new App();
+// Custom middleware class
+class AuthMiddleware implements MiddlewareInterface {
+    public function handle(Request $request, \Closure $next): void {
+        // Check authentication
+        if (!$this->isAuthenticated($request)) {
+            (new Response())->setJsonResponse(['error' => 'Unauthorized'], 401)->send();
+            return;
+        }
+        $next();
+    }
+}
 
-$app->addMiddleware(new AuthMiddleware());
+$router = new Router();
 
-// Define routes...
+// Apply middleware to route groups
+$router->group(['middleware' => [new AuthMiddleware()]], function($router) {
+    $router->get('/protected', function($request) {
+        // This route is protected by AuthMiddleware
+    });
+});
+```
+
+### Backward Compatibility
+
+**All existing code continues to work without changes!** FastAPI maintains 100% backward compatibility:
+
+```php
+// Existing code works exactly the same
+$router = new Router();
+$router->addRoute('GET', '/users', function($request) {
+    // Still works perfectly
+});
+
+// While new features are available
+$router->group(['prefix' => 'api'], function($router) {
+    $router->get('/posts', function($request) {
+        // New route groups feature
+    });
+});
 ```
 
 ### Generating JWT Tokens
@@ -91,7 +177,29 @@ $currentTime = $time->get_date();
 
 ### Building RESTful APIs
 
-FastAPI is perfect for building RESTful APIs for web and mobile applications. Its simple routing system and middleware support make it easy to define API endpoints and add functionality such as authentication and error handling.
+FastAPI is perfect for building RESTful APIs for web and mobile applications. Its simple routing system, route groups, and middleware support make it easy to define API endpoints and add functionality such as authentication and error handling.
+
+### Organizing Large APIs with Route Groups
+
+Route groups make it easy to organize large APIs with clean URL structures and shared middleware:
+
+```php
+// API versioning and organization
+$router->group(['prefix' => 'api/v1'], function($router) {
+    // User management routes
+    $router->group(['prefix' => 'users'], function($router) {
+        $router->get('/', [$userController, 'index']);
+        $router->post('/', [$userController, 'store']);
+        $router->get('/:id', [$userController, 'show']);
+    });
+    
+    // Admin routes with authentication
+    $router->group(['prefix' => 'admin', 'middleware' => [new AuthMiddleware(), new AdminMiddleware()]], function($router) {
+        $router->get('/dashboard', [$adminController, 'dashboard']);
+        $router->get('/users', [$adminController, 'manageUsers']);
+    });
+});
+```
 
 ### Token-based Authentication
 
@@ -107,7 +215,7 @@ FastAPI comes with built-in error handling capabilities, allowing developers to 
 
 ### Middleware Integration
 
-FastAPI supports middleware integration, enabling developers to add custom middleware to the request-response cycle. This allows for tasks such as authentication, logging, request modification, or response formatting to be easily implemented and applied to specific routes.
+FastAPI supports middleware integration, enabling developers to add custom middleware to the request-response cycle. With route groups, middleware can be applied to entire groups of routes, making it easy to implement authentication, logging, request modification, or response formatting across multiple endpoints efficiently.
 
 ### Rapid Prototyping
 
@@ -120,6 +228,12 @@ FastAPI can be used for data transformation tasks such as converting data betwee
 ### Real-time Applications
 
 FastAPI can be used to build real-time applications such as chat applications, live updates, or real-time analytics dashboards. Its asynchronous capabilities and event-driven architecture make it well-suited for handling concurrent connections and processing real-time data streams.
+
+## Documentation
+
+For detailed documentation on route groups and advanced features, see:
+- **Route Groups Documentation**: `docs/route-groups.md` - Comprehensive guide to route groups, middleware, and nested grouping
+- **Examples**: `examples/route_groups_example.php` - Working examples of all route group features
 
 ## Contributing
 

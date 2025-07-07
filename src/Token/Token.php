@@ -86,7 +86,7 @@ class Token extends JWT
      * @param bool $use_ssl Whether to use SSL.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function __construct($audience, CustomTime $timeHnadler = null, bool $use_ssl = true)
+    public function __construct($audience, ?CustomTime $timeHnadler = null, bool $use_ssl = true)
     {
         if (empty($audience)) {
             throw new \InvalidArgumentException('Audience cannot be empty.');
@@ -196,7 +196,7 @@ class Token extends JWT
      * @return string The generated JWT token.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function make(array $data = [], int $expiry = null): self
+    public function make(array $data = [], ?int $expiry = null): self
     {
         if (!$this->use_ssl && !$this->secret_key)
             throw new \Exception('Secret Key was not set');
