@@ -10,15 +10,15 @@
       }
     ],
     "require": {
-      "php": "^7.4 || ^8.0",
-      "firebase/php-jwt": "^5.5"
+      "php": "^8.0",
+      "firebase/php-jwt": "^6.11"
     },
     "autoload": {
       "psr-4": {
         "FASTAPI\\": "src/"
       }
     },
-    "version": "1.0.1",
+    "version": "2.0.0",
     "minimum-stability": "dev",
     "prefer-stable": true
   }
