@@ -39,8 +39,9 @@ class CustomTime extends DateTimeImmutable{
      */
     public function __construct($date = 'now') {
         $this->timezone = new DateTimezone($_ENV['TIMEZONE'] ?? 'UTC');
-        $this->date = new parent($date ?? 'now', $this->timezone);
-        $this->time = $this->date->getTimestamp();
+        parent::__construct($date ?? 'now', $this->timezone);
+        $this->date = $this;
+        $this->time = $this->getTimestamp();
     }
 
     /**
@@ -50,7 +51,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted date string.
      */
     public function get_date($format = null) {
-        return $this->date->format($format ?? $this->format);
+        return $this->format($format ?? $this->format);
     }
 
     /**
@@ -60,7 +61,7 @@ class CustomTime extends DateTimeImmutable{
      * @return DateTimeImmutable The formatted date string.
      */
     public function get_date_instance() {
-        return $this->date;
+        return $this;
     }
 
     /**
@@ -70,7 +71,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted time string.
      */
     public function get_formated_time($format = 'H:i:s') {
-        return $this->date->format($format);
+        return $this->format($format);
     }
 
     /**
@@ -78,7 +79,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted time string.
      */
     public function get_time() {
-        return $this->time;
+        return $this->getTimestamp();
     }
     /**
      * Gets the formatted time based on the specified format.
@@ -99,7 +100,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted UTC time string.
      */
     public function get_utc_time($format = 'H:i:s') {
-        $utcDate = $this->date->setTimezone(new DateTimeZone('UTC'));
+        $utcDate = $this->setTimezone(new DateTimeZone('UTC'));
         return $utcDate->format($format);
     }
 
@@ -109,7 +110,7 @@ class CustomTime extends DateTimeImmutable{
      * @return int The timestamp.
      */
     public function get_timestamp() {
-        return $this->date->getTimestamp();
+        return $this->getTimestamp();
     }
 
     /**
@@ -123,10 +124,8 @@ class CustomTime extends DateTimeImmutable{
      */
     public function extend_date($days = 0, $hours = 0, $minutes = 0, $seconds = 0) {
         $interval = sprintf("P%dDT%dH%dM%dS", $days, $hours, $minutes, $seconds);
-        $newDate = $this->date->add(new DateInterval($interval));
-        $this->date = $newDate;
-        $this->time = $this->date->getTimestamp();
-        return $this;
+        $newDate = $this->add(new DateInterval($interval));
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -136,7 +135,7 @@ class CustomTime extends DateTimeImmutable{
      * @return bool True if this time is before the other time, false otherwise.
      */
     public function isBefore($otherTime) {
-        return $this->date < $otherTime->date;
+        return $this < $otherTime;
     }
     
     /**
@@ -146,7 +145,7 @@ class CustomTime extends DateTimeImmutable{
      * @return bool True if this time is after the other time, false otherwise.
      */
     public function isAfter($otherTime) {
-        return $this->date > $otherTime->date;
+        return $this > $otherTime;
     }
     
     /**
@@ -156,7 +155,7 @@ class CustomTime extends DateTimeImmutable{
      * @return bool True if this time is equal to the other time, false otherwise.
      */
     public function equals($otherTime) {
-        return $this->date == $otherTime->date;
+        return $this == $otherTime;
     }
 
     /**
@@ -174,8 +173,8 @@ class CustomTime extends DateTimeImmutable{
         } else {
             throw new \InvalidArgumentException('Invalid timezone argument. Expected string or DateTimeZone object.');
         }
-        $this->date = $this->date->setTimezone($this->timezone);
-        return $this;
+        $newDate = $this->setTimezone($this->timezone);
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -195,7 +194,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted date and time string.
      */
     public function formatCustom($format = null) {
-        return $this->date->format($format ?? $this->format);
+        return $this->format($format ?? $this->format);
     }
 
     /**
@@ -205,7 +204,7 @@ class CustomTime extends DateTimeImmutable{
      * @return int The difference in days.
      */
     public function diffInDays($otherTime) {
-        $diff = $this->date->diff($otherTime->date);
+        $diff = $this->diff($otherTime);
         return $diff->days;
     }
 
@@ -216,8 +215,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function add_days($days) {
-        $this->date = $this->date->modify("+{$days} days");
-        return $this;
+        $newDate = $this->modify("+{$days} days");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
     
     /**
@@ -227,8 +226,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function subtract_days($days) {
-        $this->date = $this->date->modify("-{$days} days$days");
-        return $this;
+        $newDate = $this->modify("-{$days} days");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -238,8 +237,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function add_weeks($weeks) {
-        $this->date = $this->date->modify("+{$weeks} weeks");
-        return $this;
+        $newDate = $this->modify("+{$weeks} weeks");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
     
     /**
@@ -249,8 +248,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function subtract_weeks($weeks) {
-        $this->date = $this->date->modify("-{$weeks} weeks");
-        return $this;
+        $newDate = $this->modify("-{$weeks} weeks");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -260,8 +259,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function add_months($months) {
-        $this->date = $this->date->modify("+{$months} months");
-        return $this;
+        $newDate = $this->modify("+{$months} months");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
     
     /**
@@ -271,8 +270,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function subtract_months($months) {
-        $this->date = $this->date->modify("-{$months} months");
-        return $this;
+        $newDate = $this->modify("-{$months} months");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -282,8 +281,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function add_years($years) {
-        $this->date = $this->date->modify("+{$years} years");
-        return $this;
+        $newDate = $this->modify("+{$years} years");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
     
     /**
@@ -293,8 +292,8 @@ class CustomTime extends DateTimeImmutable{
      * @return CustomTime The modified CustomTime object.
      */
     public function subtract_years($years) {
-        $this->date = $this->date->modify("-{$years} years");
-        return $this;
+        $newDate = $this->modify("-{$years} years");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -309,8 +308,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of minutes must be an integer.');
         }
 
-        $this->date = $this->date->modify("+{$minutes} minutes");
-        return $this;
+        $newDate = $this->modify("+{$minutes} minutes");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -325,8 +324,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of hours must be an integer.');
         }
 
-        $this->date = $this->date->modify("+{$hours} hours");
-        return $this;
+        $newDate = $this->modify("+{$hours} hours");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -341,8 +340,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of seconds must be an integer.');
         }
 
-        $this->date = $this->date->modify("+{$seconds} seconds");
-        return $this;
+        $newDate = $this->modify("+{$seconds} seconds");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -357,8 +356,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of minutes must be an integer.');
         }
 
-        $this->date = $this->date->modify("-{$minutes} minutes");
-        return $this;
+        $newDate = $this->modify("-{$minutes} minutes");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -373,8 +372,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of hours must be an integer.');
         }
 
-        $this->date = $this->date->modify("-{$hours} hours");
-        return $this;
+        $newDate = $this->modify("-{$hours} hours");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -389,8 +388,8 @@ class CustomTime extends DateTimeImmutable{
             throw new \InvalidArgumentException('Number of seconds must be an integer.');
         }
 
-        $this->date = $this->date->modify("-{$seconds} seconds");
-        return $this;
+        $newDate = $this->modify("-{$seconds} seconds");
+        return new self($newDate->format('Y-m-d H:i:s'));
     }
 
     /**
@@ -400,8 +399,8 @@ class CustomTime extends DateTimeImmutable{
      */
     public function serialize() {
         return json_encode([
-            'date' => $this->date->format('Y-m-d H:i:s'),
-            'timezone' => $this->date->getTimezone()->getName()
+            'date' => $this->format('Y-m-d H:i:s'),
+            'timezone' => $this->getTimezone()->getName()
         ]);
     }
 
@@ -437,8 +436,8 @@ class CustomTime extends DateTimeImmutable{
      */
     public function __add($interval) {
         if ($interval instanceof DateInterval) {
-            $this->date = $this->date->add($interval);
-            $this->time = $this->date->getTimestamp();
+            $newDate = $this->add($interval);
+            return new self($newDate->format('Y-m-d H:i:s'));
         }
         return $this;
     }
@@ -451,8 +450,8 @@ class CustomTime extends DateTimeImmutable{
      */
     public function __sub($interval) {
         if ($interval instanceof DateInterval) {
-            $this->date = $this->date->sub($interval);
-            $this->time = $this->date->getTimestamp();
+            $newDate = $this->sub($interval);
+            return new self($newDate->format('Y-m-d H:i:s'));
         }
         return $this;
     }

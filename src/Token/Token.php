@@ -3,6 +3,7 @@
 namespace FASTAPI\Token;
 
 use \Firebase\JWT\JWT;
+use \Firebase\JWT\Key;
 use FASTAPI\CustomTime\CustomTime;
 
 /**
@@ -213,9 +214,10 @@ class Token extends JWT
         ];
 
         if (!$this->use_ssl && $this->secret_key)
-            $this->token = $this->encode($token, $this->secret_key);
+            $this->token = $this->encode($token, $this->secret_key, 'HS256');
         else if ($this->use_ssl && is_file($this->private_key_file)) {
-            $this->token = $this->encode($token, $this->get_private_key_openssl(), $this->algo);
+            $privateKey = file_get_contents($this->private_key_file);
+            $this->token = $this->encode($token, $privateKey, $this->algo);
         } else {
             throw new \Exception("Unable to generate token due to bad configuration");
         }
@@ -233,13 +235,14 @@ class Token extends JWT
     {
         if (!$this->use_ssl && !$this->secret_key)
             throw new \Exception('Secret Key was not set');
-        if ($this->use_ssl && !is_file($this->private_key_file))
-            throw new \Exception('Private key can not be located');
+        if ($this->use_ssl && !is_file($this->public_key_file))
+            throw new \Exception('Public key can not be located');
 
-        if (!$this->use_ssl && $this->secret_key)
-            $this->data = $this->decode($token, $this->secret_key);
-        else if ($this->use_ssl && is_file($this->public_key_file)) {
-            $this->data = $this->decode($token, $this->get_public_key_openssl(), [$this->algo]);
+        if (!$this->use_ssl && $this->secret_key) {
+            $this->data = $this->decode($token, new Key($this->secret_key, 'HS256'));
+        } else if ($this->use_ssl && is_file($this->public_key_file)) {
+            $publicKey = file_get_contents($this->public_key_file);
+            $this->data = $this->decode($token, new Key($publicKey, $this->algo));
         } else {
             throw new \Exception("Unable to verify token due to bad configuration");
         }
