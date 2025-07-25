@@ -18,7 +18,6 @@
         "FASTAPI\\": "src/"
       }
     },
-    "version": "2.0.0",
     "minimum-stability": "dev",
     "prefer-stable": true
   }
