@@ -132,6 +132,19 @@ class App
     }
 
     /**
+     * Creates a route group with common attributes.
+     *
+     * @param array $attributes Group attributes (prefix, middleware, namespace)
+     * @param callable $callback Callback function to define routes within the group
+     * @return App Returns the current App instance for method chaining.
+     */
+    public function group(array $attributes, callable $callback)
+    {
+        $this->router->group($attributes, $callback);
+        return $this;
+    }
+
+    /**
      * Adds a middleware function to be executed before the request handler.
      *
      * @param callable $middleware A function that takes a Request object and can modify it.

@@ -48,6 +48,18 @@ $app->get('/users/:id', function(Request $request, $id) {
     return (new Response())->setJsonResponse(['user_id' => $id]);
 });
 
+// Route groups for organized API structure
+$app->group(['prefix' => 'api'], function($app) {
+    $app->get('/users', function($request) {
+        return (new Response())->setJsonResponse(['users' => ['John', 'Jane']]);
+    });
+    
+    $app->post('/users', function($request) {
+        $data = $request->getData();
+        return (new Response())->setJsonResponse(['message' => 'User created', 'data' => $data]);
+    });
+});
+
 $app->run();
 ```
 
@@ -163,6 +175,60 @@ $app->setNotFoundHandler(function($request) {
 
 // Start the application
 $app->run();
+```
+
+#### App-Level Route Groups
+
+The App class supports the same powerful route grouping features as the Router class:
+
+```php
+// Basic route group with prefix
+$app->group(['prefix' => 'api'], function($app) {
+    $app->get('/users', function($request) {
+        return (new Response())->setJsonResponse(['users' => ['John', 'Jane']]);
+    });
+    
+    $app->post('/users', function($request) {
+        $data = $request->getData();
+        return (new Response())->setJsonResponse(['message' => 'User created', 'data' => $data]);
+    });
+});
+
+// Group with middleware
+$app->group(['middleware' => [new AuthMiddleware()]], function($app) {
+    $app->get('/profile', function($request) {
+        return (new Response())->setJsonResponse(['profile' => 'User profile data']);
+    });
+    
+    $app->put('/settings', function($request) {
+        return (new Response())->setJsonResponse(['message' => 'Settings updated']);
+    });
+});
+
+// Nested groups with inheritance
+$app->group(['prefix' => 'admin', 'middleware' => [new AuthMiddleware()]], function($app) {
+    $app->get('/dashboard', function($request) {
+        return (new Response())->setJsonResponse(['dashboard' => 'Admin dashboard']);
+    });
+    
+    // Nested group inherits prefix and middleware
+    $app->group(['prefix' => 'users', 'middleware' => [new RateLimitMiddleware()]], function($app) {
+        $app->get('/', function($request) {
+            return (new Response())->setJsonResponse(['users' => 'All users']);
+        });
+        
+        $app->post('/', function($request) {
+            return (new Response())->setJsonResponse(['message' => 'User created']);
+        });
+    });
+});
+
+// Group with namespace for controller organization
+$app->group(['prefix' => 'api/v2', 'namespace' => 'App\\Controllers'], function($app) {
+    $app->get('/products', 'ProductController@index');
+    $app->post('/products', 'ProductController@store');
+    $app->get('/products/{id}', 'ProductController@show');
+});
 ```
 
 ### 3. Request Class - HTTP Request Handling
