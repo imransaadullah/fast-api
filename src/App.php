@@ -145,6 +145,20 @@ class App
     }
 
     /**
+     * Create a WebSocket server instance
+     *
+     * @param int $port WebSocket server port
+     * @param string $host WebSocket server host
+     * @return \FASTAPI\WebSocket\WebSocketServer
+     */
+    public function websocket($port = 8080, $host = '0.0.0.0')
+    {
+        $server = new \FASTAPI\WebSocket\WebSocketServer($this);
+        $server->port($port)->host($host);
+        return $server;
+    }
+
+    /**
      * Adds a middleware function to be executed before the request handler.
      *
      * @param callable $middleware A function that takes a Request object and can modify it.

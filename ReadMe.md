@@ -12,6 +12,7 @@ FastAPI is a lightweight, powerful PHP framework designed to make building APIs 
 - **Custom Time Utilities**: Advanced date/time manipulation and formatting
 - **String & Array Utilities**: Comprehensive utility methods for common operations
 - **Rate Limiting**: Built-in request rate limiting with IP-based tracking
+- **WebSocket Support**: Real-time WebSocket server with broadcasting capabilities
 - **100% Backward Compatible**: All new features preserve existing functionality
 - **Type Safety**: Proper error handling and validation throughout
 - **Singleton App Pattern**: Efficient application lifecycle management
@@ -230,6 +231,48 @@ $app->group(['prefix' => 'api/v2', 'namespace' => 'App\\Controllers'], function(
     $app->get('/products/{id}', 'ProductController@show');
 });
 ```
+
+#### WebSocket Support
+
+FastAPI includes built-in WebSocket server capabilities for real-time applications:
+
+```php
+// Basic WebSocket server
+$websocket = $app->websocket(8080, 'localhost');
+
+// Chat room WebSocket
+$websocket->on('/chat', function($connection) {
+    // Send welcome message
+    $connection->send(json_encode([
+        'event' => 'welcome',
+        'payload' => ['message' => 'Welcome to chat!']
+    ]));
+    
+    // Handle incoming messages
+    while ($connection->isConnected()) {
+        $message = $connection->read();
+        if ($message) {
+            $data = json_decode($message, true);
+            // Process message and respond
+            $connection->send(json_encode([
+                'event' => 'message_received',
+                'payload' => $data
+            ]));
+        }
+    }
+});
+
+// Start the WebSocket server
+$websocket->start();
+```
+
+**WebSocket Features:**
+- **Real-time Communication**: Full WebSocket protocol support
+- **Broadcasting**: Send messages to all connected clients
+- **Authentication**: Secure WebSocket connections with tokens
+- **Multiple Servers**: Run multiple WebSocket servers on different ports
+- **Event-based**: JSON-based event system for structured communication
+- **Fluent API**: Chainable methods for easy configuration
 
 ### 3. Request Class - HTTP Request Handling
 
