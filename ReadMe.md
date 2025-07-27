@@ -949,7 +949,13 @@ $app->run();
 
 ## 📚 Documentation
 
-- **Route Groups Guide**: `docs/route-groups.md` - Comprehensive route groups documentation
+- **[API Reference](docs/api-reference.md)** - Complete API reference with method signatures
+- **[Route Groups Guide](docs/route-groups.md)** - Comprehensive route groups documentation
+- **[WebSocket Documentation](docs/websocket.md)** - Complete WebSocket implementation guide
+- **[WebSocket Quick Reference](docs/websocket-quick-reference.md)** - Quick reference for WebSocket patterns
+- **[CustomTime Documentation](docs/customtime.md)** - Advanced date/time manipulation guide
+- **[Token Documentation](docs/token.md)** - JWT token handling and security guide
+- **[Utilities Documentation](docs/utilities.md)** - StringMethods and ArrayMethods utilities
 - **Examples**: `examples/` - Working examples for all features
 - **Tests**: `test/` - Compatibility and functionality tests
 
