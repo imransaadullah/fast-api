@@ -8,7 +8,7 @@ namespace FASTAPI\WebSocket;
  */
 class WebSocketConnection
 {
-    /** @var resource */
+    /** @var resource|\Socket */
     private $socket;
     
     /** @var bool */
@@ -20,6 +20,9 @@ class WebSocketConnection
     /** @var array */
     private $headers = [];
 
+    /**
+     * @param resource|\Socket $socket
+     */
     public function __construct($socket)
     {
         $this->socket = $socket;

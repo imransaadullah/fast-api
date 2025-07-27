@@ -66,7 +66,222 @@ $app->run();
 
 ## 🛠 Core Components
 
-### 1. Router Class - Advanced Routing
+### 1. WebSocket Support - Real-time Communication
+
+FastAPI includes a pure PHP WebSocket implementation for real-time communication. The WebSocket functionality is 100% backward compatible and integrates seamlessly with existing HTTP routes.
+
+#### Basic WebSocket Server
+
+```php
+use FASTAPI\App;
+use FASTAPI\WebSocket\WebSocketServer;
+use FASTAPI\WebSocket\WebSocketConnection;
+
+$app = App::getInstance();
+
+// Create WebSocket server
+$websocket = $app->websocket(8080, 'localhost');
+
+// Register WebSocket routes
+$websocket->on('/chat', function(WebSocketConnection $connection) {
+    echo "New chat connection established\n";
+    
+    // Send welcome message
+    $connection->send(json_encode([
+        'event' => 'welcome',
+        'message' => 'Welcome to the chat!'
+    ]));
+});
+
+// Start the server
+$websocket->start();
+```
+
+#### Fluent API Configuration
+
+```php
+// Configure WebSocket server with fluent API
+$websocket = $app->websocket()
+    ->port(8080)
+    ->host('0.0.0.0')
+    ->on('/notifications', function($connection) {
+        // Handle notifications
+    })
+    ->on('/realtime', function($connection) {
+        // Handle real-time data
+    });
+```
+
+#### Broadcasting Messages
+
+```php
+// Broadcast to all connected clients
+$websocket->broadcast('user_joined', [
+    'user' => 'John Doe',
+    'timestamp' => time()
+]);
+
+// Broadcast to specific event
+$websocket->broadcast('chat_message', [
+    'user' => 'Alice',
+    'message' => 'Hello everyone!',
+    'room' => 'general'
+]);
+```
+
+#### WebSocket Connection Management
+
+```php
+$websocket->on('/chat', function(WebSocketConnection $connection) {
+    // Get connection details
+    $path = $connection->getPath();        // /chat
+    $headers = $connection->getHeaders();  // Request headers
+    
+    // Send messages
+    $connection->send('Hello from server!');
+    
+    // Read incoming messages
+    while ($connection->isConnected()) {
+        $message = $connection->read();
+        if ($message) {
+            $data = json_decode($message, true);
+            // Process message
+            $connection->send(json_encode([
+                'event' => 'message_received',
+                'data' => $data
+            ]));
+        }
+    }
+    
+    // Close connection
+    $connection->close();
+});
+```
+
+#### Multiple WebSocket Servers
+
+```php
+// Chat server
+$chatServer = $app->websocket(8080, 'localhost')
+    ->on('/chat', $chatHandler);
+
+// Notifications server
+$notifServer = $app->websocket(8081, 'localhost')
+    ->on('/notifications', $notifHandler);
+
+// Real-time data server
+$dataServer = $app->websocket(8082, 'localhost')
+    ->on('/realtime', $dataHandler);
+```
+
+#### WebSocket with HTTP Routes
+
+```php
+// HTTP routes work alongside WebSocket
+$app->get('/api/users', function($request) {
+    return (new Response())->setJsonResponse(['users' => $users]);
+});
+
+$app->post('/api/messages', function($request) {
+    $data = $request->getData();
+    
+    // Broadcast to WebSocket clients
+    $websocket->broadcast('new_message', $data);
+    
+    return (new Response())->setJsonResponse(['status' => 'sent']);
+});
+
+// WebSocket routes
+$websocket->on('/chat', function($connection) {
+    // Handle real-time chat
+});
+```
+
+#### WebSocket Server Methods
+
+```php
+$websocket = $app->websocket(8080);
+
+// Configuration
+$websocket->port(8080);           // Set port
+$websocket->host('0.0.0.0');      // Set host
+
+// Route registration
+$websocket->on('/path', $handler); // Register route
+
+// Server control
+$websocket->start();               // Start server
+$websocket->stop();                // Stop server
+
+// Broadcasting
+$websocket->broadcast($event, $payload); // Broadcast to all
+
+// Connection info
+$count = $websocket->getConnectionCount(); // Active connections
+$connections = $websocket->getConnections(); // All connections
+```
+
+#### WebSocket Connection Methods
+
+```php
+$websocket->on('/example', function(WebSocketConnection $connection) {
+    // Connection state
+    $isConnected = $connection->isConnected();
+    
+    // Connection info
+    $path = $connection->getPath();
+    $headers = $connection->getHeaders();
+    $header = $connection->getHeader('User-Agent');
+    
+    // Communication
+    $connection->send($message);    // Send message
+    $message = $connection->read(); // Read message
+    
+    // Cleanup
+    $connection->close();           // Close connection
+});
+```
+
+#### WebSocket Protocol Support
+
+The WebSocket implementation supports the full WebSocket protocol:
+
+- **Handshake**: Automatic WebSocket upgrade handshake
+- **Framing**: Text, binary, ping, pong, and close frames
+- **Masking**: Client-to-server message masking
+- **Extensions**: Support for WebSocket extensions
+- **Status Codes**: Proper close codes and status handling
+
+#### Error Handling
+
+```php
+try {
+    $websocket = $app->websocket(8080);
+    $websocket->start();
+} catch (Exception $e) {
+    echo "WebSocket error: " . $e->getMessage();
+}
+
+// Handle connection errors
+$websocket->on('/chat', function(WebSocketConnection $connection) {
+    try {
+        $message = $connection->read();
+        // Process message
+    } catch (Exception $e) {
+        echo "Connection error: " . $e->getMessage();
+        $connection->close();
+    }
+});
+```
+
+#### Performance Considerations
+
+- **Pure PHP**: No external dependencies for WebSocket functionality
+- **Lightweight**: Minimal memory footprint
+- **Scalable**: Supports multiple concurrent connections
+- **Efficient**: Non-blocking I/O with proper resource management
+
+### 2. Router Class - Advanced Routing
 
 The Router class provides powerful routing capabilities with support for groups, middleware, and Laravel-style syntax.
 
@@ -887,6 +1102,12 @@ class ApiResponse {
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## 📚 Documentation
+
+- **[WebSocket Documentation](docs/websocket.md)** - Comprehensive WebSocket guide with examples
+- **[WebSocket Quick Reference](docs/websocket-quick-reference.md)** - Quick reference for common patterns
+- **[Route Groups Documentation](docs/route-groups.md)** - Advanced routing with groups and middleware
 
 ## 📄 License
 

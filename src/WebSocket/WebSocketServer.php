@@ -30,7 +30,7 @@ class WebSocketServer
     /** @var string */
     private $host = '0.0.0.0';
     
-    /** @var resource|null */
+    /** @var resource|\Socket|null */
     private $socket = null;
 
     public function __construct(App $app = null)
@@ -159,7 +159,7 @@ class WebSocketServer
     /**
      * Handle new WebSocket connection
      *
-     * @param resource $client
+     * @param resource|\Socket $client
      * @return void
      */
     private function handleNewConnection($client)

@@ -1,8 +1,6 @@
 <?php
 
-require_once '../src/Router.php';
-require_once '../src/Request.php';
-require_once '../src/Response.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use FASTAPI\Router;
 use FASTAPI\Request;
