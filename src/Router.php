@@ -262,12 +262,22 @@ class Router
             if (is_string($middleware)) {
                 // Class name - instantiate it
                 if (class_exists($middleware)) {
-                    return new $middleware();
+                    $instance = new $middleware();
+                    if ($instance instanceof MiddlewareInterface) {
+                        return $instance;
+                    }
+                    // If not implementing the interface, return null
+                    return null;
                 }
             } elseif ($middleware instanceof MiddlewareInterface) {
                 return $middleware;
             } elseif (is_callable($middleware)) {
-                return $middleware();
+                $instance = $middleware();
+                if ($instance instanceof MiddlewareInterface) {
+                    return $instance;
+                }
+                // If not implementing the interface, return null
+                return null;
             }
         }
         
@@ -290,10 +300,20 @@ class Router
             if (is_string($middleware)) {
                 // Class name - instantiate with parameter
                 if (class_exists($middleware)) {
-                    return new $middleware($parameter);
+                    $instance = new $middleware($parameter);
+                    if ($instance instanceof MiddlewareInterface) {
+                        return $instance;
+                    }
+                    // If not implementing the interface, return null
+                    return null;
                 }
             } elseif (is_callable($middleware)) {
-                return $middleware($parameter);
+                $instance = $middleware($parameter);
+                if ($instance instanceof MiddlewareInterface) {
+                    return $instance;
+                }
+                // If not implementing the interface, return null
+                return null;
             }
         }
         
@@ -320,7 +340,13 @@ class Router
         if (isset($commonMiddleware[$alias])) {
             $className = $commonMiddleware[$alias];
             if (class_exists($className)) {
-                return new $className();
+                $instance = new $className();
+                // Check if the instance implements the required interface
+                if ($instance instanceof MiddlewareInterface) {
+                    return $instance;
+                }
+                // If not, return null instead of throwing an error
+                return null;
             }
         }
         
@@ -346,7 +372,13 @@ class Router
         if (isset($commonMiddleware[$name])) {
             $className = $commonMiddleware[$name];
             if (class_exists($className)) {
-                return new $className($parameter);
+                $instance = new $className($parameter);
+                // Check if the instance implements the required interface
+                if ($instance instanceof MiddlewareInterface) {
+                    return $instance;
+                }
+                // If not, return null instead of throwing an error
+                return null;
             }
         }
         
