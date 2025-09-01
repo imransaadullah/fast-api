@@ -410,8 +410,9 @@ $app->group(['prefix' => 'api'], function($app) {
     });
 });
 
-// Group with middleware
-$app->group(['middleware' => [new AuthMiddleware()]], function($app) {
+// Group with middleware (uses App middleware registration)
+$app->registerMiddleware('auth', AuthMiddleware::class);
+$app->group(['middleware' => ['auth']], function($app) {
     $app->get('/profile', function($request) {
         return (new Response())->setJsonResponse(['profile' => 'User profile data']);
     });
@@ -422,18 +423,19 @@ $app->group(['middleware' => [new AuthMiddleware()]], function($app) {
 });
 
 // Nested groups with inheritance
-$app->group(['prefix' => 'admin', 'middleware' => [new AuthMiddleware()]], function($app) {
+$app->registerMiddleware('role', RoleMiddleware::class);
+$app->group(['prefix' => 'admin', 'middleware' => ['auth']], function($app) {
     $app->get('/dashboard', function($request) {
         return (new Response())->setJsonResponse(['dashboard' => 'Admin dashboard']);
     });
     
     // Nested group inherits prefix and middleware
-    $app->group(['prefix' => 'users', 'middleware' => [new RateLimitMiddleware()]], function($app) {
-        $app->get('/', function($request) {
+    $app->group(['middleware' => ['role:admin']], function($app) {
+        $app->get('/users', function($request) {
             return (new Response())->setJsonResponse(['users' => 'All users']);
         });
         
-        $app->post('/', function($request) {
+        $app->post('/users', function($request) {
             return (new Response())->setJsonResponse(['message' => 'User created']);
         });
     });
@@ -446,6 +448,8 @@ $app->group(['prefix' => 'api/v2', 'namespace' => 'App\\Controllers'], function(
     $app->get('/products/{id}', 'ProductController@show');
 });
 ```
+
+**Important:** App-level groups use Router's middleware aliasing system. You must register middleware aliases with `$app->registerMiddleware()` before using them in groups.
 
 #### WebSocket Support
 
@@ -686,8 +690,22 @@ $restored = CustomTime::deserialize($serialized);
 
 ### 7. Middleware System
 
-Create and use middleware for request processing.
+FastAPI provides two middleware systems: **App-level** (global) and **Router-level** (route-specific) with aliasing support.
 
+#### App-Level Middleware (Global)
+```php
+$app = App::getInstance();
+
+// Global middleware that runs on every request
+$app->addMiddleware(new CorsMiddleware());
+$app->addMiddleware(function($request, $next) {
+    // Log request
+    error_log("Request: " . $request->getMethod() . " " . $request->getUri());
+    $next();
+});
+```
+
+#### Router-Level Middleware (Route-Specific)
 ```php
 use FASTAPI\Middlewares\MiddlewareInterface;
 use FASTAPI\Request;
@@ -713,8 +731,8 @@ class AuthMiddleware implements MiddlewareInterface {
     private function getUserFromToken($token) { /* user extraction */ }
 }
 
-// Register and use middleware
-$router->registerMiddleware('auth', AuthMiddleware::class);
+// Register middleware aliases
+$app->registerMiddleware('auth', AuthMiddleware::class);
 
 // Parameterized middleware
 class RoleMiddleware implements MiddlewareInterface {
@@ -734,13 +752,19 @@ class RoleMiddleware implements MiddlewareInterface {
     }
 }
 
-$router->registerMiddleware('role', RoleMiddleware::class);
+$app->registerMiddleware('role', RoleMiddleware::class);
 
-// Use in routes
-$router->group(['middleware' => ['auth', 'role:admin']], function($router) {
-    $router->get('/admin/users', $handler);
+// Use middleware in route groups
+$app->group(['middleware' => ['auth', 'role:admin']], function($app) {
+    $app->get('/admin/users', $handler);
 });
 ```
+
+**Key Differences:**
+- **App-level**: Global, no aliasing, runs before route matching
+- **Router-level**: Route-specific, supports aliasing, runs after route matching
+
+See **[Complete Middleware Guide](docs/middleware-complete-guide.md)** for detailed documentation.
 
 ### 8. Utility Classes
 
@@ -950,6 +974,7 @@ $app->run();
 ## 📚 Documentation
 
 - **[API Reference](docs/api-reference.md)** - Complete API reference with method signatures
+- **[Complete Middleware Guide](docs/middleware-complete-guide.md)** - Comprehensive middleware documentation
 - **[Route Groups Guide](docs/route-groups.md)** - Comprehensive route groups documentation
 - **[WebSocket Documentation](docs/websocket.md)** - Complete WebSocket implementation guide
 - **[WebSocket Quick Reference](docs/websocket-quick-reference.md)** - Quick reference for WebSocket patterns

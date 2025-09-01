@@ -60,9 +60,46 @@ class App
         return self::$instance;
     }
 
+    /**
+     * Get the router instance for middleware registration and advanced configuration.
+     *
+     * @return Router The router instance
+     */
+    public function getRouter()
+    {
+        return $this->router;
+    }
+
     public function addMiddleware($middleware)
     {
         $this->middlewares[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * Register middleware with alias for route-specific middleware.
+     * This delegates to the router's middleware registration system.
+     *
+     * @param string $alias The middleware alias
+     * @param mixed $middleware The middleware class or factory
+     * @return App Returns the current App instance for method chaining.
+     */
+    public function registerMiddleware(string $alias, $middleware)
+    {
+        $this->router->registerMiddleware($alias, $middleware);
+        return $this;
+    }
+
+    /**
+     * Set controller namespaces for automatic resolution.
+     * This delegates to the router's namespace configuration.
+     *
+     * @param array $namespaces Array of namespace prefixes
+     * @return App Returns the current App instance for method chaining.
+     */
+    public function setControllerNamespaces(array $namespaces)
+    {
+        $this->router->setControllerNamespaces($namespaces);
         return $this;
     }
 
