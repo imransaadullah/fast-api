@@ -12,6 +12,8 @@ use FASTAPI\Response;
  */
 class WebSocketServer
 {
+    private static $instance = null; // Singleton instance
+
     /** @var App */
     private $app;
     
@@ -33,9 +35,37 @@ class WebSocketServer
     /** @var resource|\Socket|null */
     private $socket = null;
 
-    public function __construct(App $app = null)
+    private function __construct(?App $app = null)
     {
         $this->app = $app ?? App::getInstance();
+    }
+
+    /**
+     * Prevent cloning of the instance.
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of the instance.
+     */
+    public function __wakeup()
+    {
+        throw new \Exception("Cannot unserialize a singleton.");
+    }
+
+    /**
+     * Retrieves the singleton instance of the WebSocketServer class.
+     *
+     * @param App|null $app The App instance to use.
+     * @return WebSocketServer The singleton instance.
+     */
+    public static function getInstance(App $app = null)
+    {
+        if (self::$instance === null) {
+            self::$instance = new self($app);
+        }
+
+        return self::$instance;
     }
 
     /**

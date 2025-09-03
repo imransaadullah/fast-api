@@ -21,16 +21,17 @@ class App
 
     /** @var array $middlewares List of middleware functions to be executed for every request. */
     private $middlewares = [];
-    private $rateLimitFile = __DIR__ . '/rate_limit.json'; // File to store rate-limit data
-    private $rateLimitTimeWindow = 60; // 1 minute
-    private $rateLimitMaxRequests = 100;
+    
+    /** @var \FASTAPI\RateLimiter\RateLimiter */
+    private $rateLimiter;
 
     /**
      * Initializes a new instance of the App class.
      */
     public function __construct()
     {
-        $this->router = new Router();
+        $this->router = Router::getInstance();
+        $this->rateLimiter = \FASTAPI\RateLimiter\RateLimiter::getInstance();
     }
 
     /**
@@ -190,7 +191,7 @@ class App
      */
     public function websocket($port = 8080, $host = '0.0.0.0')
     {
-        $server = new \FASTAPI\WebSocket\WebSocketServer($this);
+        $server = \FASTAPI\WebSocket\WebSocketServer::getInstance($this);
         $server->port($port)->host($host);
         return $server;
     }
@@ -229,70 +230,66 @@ class App
         return $this->router->getRoutes();
     }
 
+    /**
+     * Set rate limiting configuration
+     */
     public function setRateLimit(int $maxRequests, int $timeWindow)
     {
-        $this->rateLimitMaxRequests = $maxRequests;
-        $this->rateLimitTimeWindow = $timeWindow;
+        $this->rateLimiter->configure([
+            'max_requests' => $maxRequests,
+            'time_window' => $timeWindow
+        ]);
         return $this;
     }
 
+    /**
+     * Check rate limiting for a request
+     */
     private function rateLimit(Request $request)
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-        $currentTime = time();
-
-        // Load rate limit data from file
-        $rateData = $this->readRateLimitFile();
-
-        // Check and update rate limit for the current IP
-        if (isset($rateData[$ip])) {
-            $timeDifference = $currentTime - $rateData[$ip]['timestamp'];
-
-            if ($timeDifference > $this->rateLimitTimeWindow) {
-                // Reset count if time window has passed
-                $rateData[$ip] = ['timestamp' => $currentTime, 'count' => 1];
-            } else {
-                // Increment request count within the time window
-                $rateData[$ip]['count']++;
-
-                if ($rateData[$ip]['count'] > $this->rateLimitMaxRequests) {
-                    // Block the request
-                    (new Response())->setJsonResponse(['error' => 1, 'message' => 'Too many requests. Please try again later.'], 429)->send();
-                }
-            }
-        } else {
-            // Initialize rate limit data for the first request
-            $rateData[$ip] = ['timestamp' => $currentTime, 'count' => 1];
+        
+        if ($this->rateLimiter->isLimited($ip)) {
+            // Block the request
+            (new Response())->setJsonResponse([
+                'error' => 1, 
+                'message' => 'Too many requests. Please try again later.'
+            ], 429)->send();
         }
-
-        // Save updated rate limit data back to file
-        $this->writeRateLimitFile($rateData);
     }
 
-    private function readRateLimitFile()
+    /**
+     * Get rate limit information for a specific key
+     */
+    public function getRateLimitInfo(string $key = null): array
     {
-        // Create the file if it doesn't exist
-        if (!file_exists($this->rateLimitFile)) {
-            file_put_contents($this->rateLimitFile, json_encode([]));
-        }
-
-        // Read and decode the file content
-        $data = file_get_contents($this->rateLimitFile);
-        return json_decode($data, true) ?: [];
+        $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        return $this->rateLimiter->getInfo($key);
     }
 
-    private function writeRateLimitFile(array $rateData)
+    /**
+     * Reset rate limit for a specific key
+     */
+    public function resetRateLimit(string $key = null): bool
     {
-        // Use file locking for concurrency safety
-        $fp = fopen($this->rateLimitFile, 'c+');
-        if (flock($fp, LOCK_EX)) {
-            // Truncate file before writing
-            ftruncate($fp, 0);
-            fwrite($fp, json_encode($rateData));
-            fflush($fp);
-            flock($fp, LOCK_UN);
-        }
-        fclose($fp);
+        $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+        return $this->rateLimiter->reset($key);
+    }
+
+    /**
+     * Get current rate limiting storage backend
+     */
+    public function getRateLimitStorage(): string
+    {
+        return $this->rateLimiter->getActiveStorage();
+    }
+
+    /**
+     * Get available rate limiting storage backends
+     */
+    public function getAvailableRateLimitStorages(): array
+    {
+        return $this->rateLimiter->getAvailableStorages();
     }
 
     /**

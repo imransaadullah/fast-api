@@ -12,6 +12,8 @@ use FASTAPI\CustomTime\CustomTime;
  */
 class Token extends JWT
 {
+    private static $instance = null; // Singleton instance
+
     // Properties
 
     /**
@@ -81,13 +83,13 @@ class Token extends JWT
 
     // Methods
     /**
-     * Constructor.
+     * Private constructor to prevent direct instantiation.
      * @param string $audience The audience for the token.
      * @param CustomTime|null $timeHandler Custom time handler.
      * @param bool $use_ssl Whether to use SSL.
      * @throws \Exception If secret key is not set or private key file is missing.
      */
-    public function __construct($audience, ?CustomTime $timeHnadler = null, bool $use_ssl = true)
+    private function __construct($audience, ?CustomTime $timeHnadler = null, bool $use_ssl = true)
     {
         if (empty($audience)) {
             throw new \InvalidArgumentException('Audience cannot be empty.');
@@ -108,6 +110,40 @@ class Token extends JWT
         $this->custom_time = $timeHnadler ?? new CustomTime();
         $this->not_before = $this->custom_time->get_timestamp();
         $this->expiry = ($timeHnadler ?? new CustomTime())->add_minutes(5)->get_timestamp();
+    }
+
+    /**
+     * Prevent cloning of the instance.
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of the instance.
+     */
+    public function __wakeup()
+    {
+        throw new \Exception("Cannot unserialize a singleton.");
+    }
+
+    /**
+     * Retrieves the singleton instance of the Token class.
+     *
+     * @param string $audience The audience for the token.
+     * @param CustomTime|null $timeHandler Custom time handler.
+     * @param bool $use_ssl Whether to use SSL.
+     * @return Token The singleton instance.
+     * @throws \Exception If secret key is not set or private key file is missing.
+     */
+    public static function getInstance($audience = null, ?CustomTime $timeHandler = null, bool $use_ssl = true)
+    {
+        if (self::$instance === null) {
+            if ($audience === null) {
+                throw new \InvalidArgumentException('Audience is required for first Token instance creation.');
+            }
+            self::$instance = new self($audience, $timeHandler, $use_ssl);
+        }
+
+        return self::$instance;
     }
 
     /**

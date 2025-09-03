@@ -15,6 +15,10 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 - **[Middleware Examples](middleware-examples.md)** - Real-world middleware implementations
 - **[Middleware Best Practices](middleware-best-practices.md)** - Security and performance guidelines
 
+### 🚦 Rate Limiting
+- **[Rate Limiting Guide](rate-limiting.md)** - Flexible rate limiting with Redis/DB/File backends, extension requirements, and performance optimization
+- **[Rate Limiting Quick Reference](rate-limiting-quick-reference.md)** - Quick setup and troubleshooting guide
+
 ### 🌐 WebSocket Support
 - **[WebSocket Guide](websocket.md)** - Complete WebSocket implementation guide
 - **[WebSocket Quick Reference](websocket-quick-reference.md)** - Quick reference for common patterns
@@ -44,6 +48,7 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 - **[Controller Integration](controller-integration.md)** - Laravel-style controller syntax
 - **[Error Handling](error-handling.md)** - Exception handling and debugging
 - **[Performance Optimization](performance.md)** - Performance tips and best practices
+- **[Troubleshooting Guide](troubleshooting.md)** - Common issues and solutions
 
 ### 🔄 Migration & Compatibility
 - **[Migration Guide](migration-guide.md)** - Upgrading from previous versions
@@ -63,6 +68,7 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 
 ### By Use Case
 - **Building APIs**: [Getting Started](getting-started.md) → [Router Class Guide](router-class.md) → [REST API Tutorial](rest-api-tutorial.md)
+- **Rate Limiting**: [Rate Limiting Guide](rate-limiting.md) → [App Class Guide](app-class.md) → Extension Setup
 - **Real-time Applications**: [WebSocket Guide](websocket.md) → [Real-time Chat Tutorial](realtime-chat-tutorial.md)
 - **Authentication Systems**: [Token Guide](token.md) → [Authentication Examples](authentication-examples.md)
 - **Healthcare Applications**: [Healthcare API Tutorial](healthcare-api-tutorial.md)
@@ -72,6 +78,7 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 - **Beginner**: [Getting Started](getting-started.md) → [App Class Guide](app-class.md) → [Request/Response Guide](request-response.md)
 - **Intermediate**: [Router Class Guide](router-class.md) → [Middleware Guide](middleware-complete-guide.md) → [Route Groups Guide](route-groups.md)
 - **Advanced**: [WebSocket Guide](websocket.md) → [Performance Optimization](performance.md) → [Testing Guide](testing-guide.md)
+- **Troubleshooting**: [Troubleshooting Guide](troubleshooting.md) → [Rate Limiting Quick Reference](rate-limiting-quick-reference.md)
 
 ## 🔍 Search Documentation
 
@@ -80,6 +87,8 @@ Use the search functionality in your IDE or browser to quickly find specific top
 - **WebSocket**: Search for "websocket" for real-time communication guides
 - **Authentication**: Search for "auth" or "token" for security documentation
 - **Routing**: Search for "route" or "router" for routing guides
+- **Extensions**: Search for "redis", "pdo", or "extension" for installation guides
+- **Troubleshooting**: Search for "error", "issue", or "problem" for solutions
 
 ## 📝 Contributing to Documentation
 

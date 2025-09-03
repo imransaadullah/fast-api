@@ -12,6 +12,8 @@ use FASTAPI\StringMethods as StringMethods;
  */
 class Inspector
 {
+	private static $instance = null; // Singleton instance
+
 	protected $_class;
 
 	protected $_meta = array(
@@ -24,13 +26,41 @@ class Inspector
 	protected $_methods = array();
 
 	/**
-     * Inspector constructor.
+     * Private constructor to prevent direct instantiation.
      *
      * @param string $class The name of the class to inspect.
      */
-	public function __construct($class)
+	private function __construct($class)
 	{
 		$this->_class = $class;
+	}
+
+	/**
+     * Prevent cloning of the instance.
+     */
+	private function __clone() {}
+
+	/**
+     * Prevent unserialization of the instance.
+     */
+	public function __wakeup()
+	{
+		throw new \Exception("Cannot unserialize a singleton.");
+	}
+
+	/**
+     * Retrieves the singleton instance of the Inspector class.
+     *
+     * @param string $class The name of the class to inspect.
+     * @return Inspector The singleton instance.
+     */
+	public static function getInstance($class)
+	{
+		if (self::$instance === null) {
+			self::$instance = new self($class);
+		}
+
+		return self::$instance;
 	}
 
 	/**

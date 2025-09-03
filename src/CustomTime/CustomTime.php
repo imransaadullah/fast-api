@@ -12,6 +12,8 @@ use \DateInterval;
  * Represents a custom time object with additional functionalities.
  */
 class CustomTime extends DateTimeImmutable{
+    private static $instance = null; // Singleton instance
+
     /**
      * @var int The timestamp representing the time associated with this object.
      */
@@ -33,15 +35,43 @@ class CustomTime extends DateTimeImmutable{
     private $format = DateTimeImmutable::RFC7231;
 
     /**
-     * Constructor.
+     * Private constructor to prevent direct instantiation.
      *
      * @param string $date A date/time string or DateTimeImmutable object. Defaults to 'now'.
      */
-    public function __construct($date = 'now') {
+    private function __construct($date = 'now') {
         $this->timezone = new DateTimezone($_ENV['TIMEZONE'] ?? 'UTC');
         parent::__construct($date ?? 'now', $this->timezone);
         $this->date = $this;
         $this->time = $this->getTimestamp();
+    }
+
+    /**
+     * Prevent cloning of the instance.
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of the instance.
+     */
+    public function __wakeup()
+    {
+        throw new \Exception("Cannot unserialize a singleton.");
+    }
+
+    /**
+     * Retrieves the singleton instance of the CustomTime class.
+     *
+     * @param string $date A date/time string or DateTimeImmutable object. Defaults to 'now'.
+     * @return CustomTime The singleton instance.
+     */
+    public static function getInstance($date = 'now')
+    {
+        if (self::$instance === null) {
+            self::$instance = new self($date);
+        }
+
+        return self::$instance;
     }
 
     /**
@@ -86,7 +116,7 @@ class CustomTime extends DateTimeImmutable{
      * @return string The formatted/unfomatted time string.
      */
     public static function now($format = '') {
-        $obj = new self();
+        $obj = self::getInstance();
         if($format){
             return $obj->get_formated_time($format);
         }

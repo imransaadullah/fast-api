@@ -1,293 +1,784 @@
-# Route Groups Documentation
+# Route Groups Guide
 
-The Fast-API router now supports route groups, which allow you to organize and apply common attributes (such as prefixes, middleware, and namespaces) to multiple routes at once.
+Route Groups are a powerful feature in FastAPI that allows you to organize routes with common attributes like prefixes, middleware, and namespaces. This guide covers both App-level and Router-level route grouping.
 
-## 🔒 **100% Backward Compatible**
+## 📋 Table of Contents
 
-**All existing code will continue to work exactly as before.** The route groups implementation is fully backward compatible:
+- [Overview](#overview)
+- [App-Level Route Groups](#app-level-route-groups)
+- [Router-Level Route Groups](#router-level-route-groups)
+- [Group Attributes](#group-attributes)
+- [Nested Groups](#nested-groups)
+- [Middleware in Groups](#middleware-in-groups)
+- [Namespace Management](#namespace-management)
+- [Advanced Patterns](#advanced-patterns)
+- [Best Practices](#best-practices)
 
-- ✅ **Existing `addRoute()` calls work unchanged**
-- ✅ **Route array structure preserved** (`method`, `uri`, `handler`)
-- ✅ **`getRoutes()` returns original format**
-- ✅ **Route parameters work the same**
-- ✅ **Array handlers work the same**
-- ✅ **Mixed usage** (old + new methods) works seamlessly
+## 🎯 Overview
 
-**No migration required!** You can start using route groups immediately without changing any existing code.
+Route Groups provide:
 
-## Features
+- **Prefix Management**: Add common URL prefixes to multiple routes
+- **Middleware Application**: Apply middleware to groups of routes
+- **Namespace Organization**: Organize controllers by namespace
+- **Code Organization**: Keep related routes together
+- **Inheritance**: Nested groups inherit parent attributes
 
-- **Route Prefixes**: Apply common URL prefixes to grouped routes
-- **Middleware Support**: Apply middleware to entire route groups
-- **Nested Groups**: Create nested route groups with inheritance
-- **Convenience Methods**: Use shorthand methods for HTTP verbs
-- **Fluent API**: Chain methods for cleaner syntax
+## 🏗 App-Level Route Groups
 
-## Basic Usage
+### Basic Usage
 
-### Simple Route Group with Prefix
+```php
+use FASTAPI\App;
+use FASTAPI\Request;
+use FASTAPI\Response;
+
+$app = App::getInstance();
+
+// Basic prefix group
+$app->group(['prefix' => 'api/v1'], function($app) {
+    $app->get('/users', function($request) {
+        return (new Response())->setJsonResponse(['users' => []]);
+    });
+    
+    $app->post('/users', function($request) {
+        $data = $request->getData();
+        return (new Response())->setJsonResponse(['message' => 'User created']);
+    });
+});
+
+// Results in:
+// GET /api/v1/users
+// POST /api/v1/users
+```
+
+### Group with Middleware
+
+```php
+// Register middleware first
+$app->registerMiddleware('auth', AuthMiddleware::class);
+$app->registerMiddleware('role', RoleMiddleware::class);
+
+// Group with middleware
+$app->group(['middleware' => ['auth']], function($app) {
+    $app->get('/profile', function($request) {
+        return (new Response())->setJsonResponse(['profile' => 'User data']);
+    });
+    
+    $app->put('/profile', function($request) {
+        $data = $request->getData();
+        return (new Response())->setJsonResponse(['message' => 'Profile updated']);
+    });
+});
+
+// Results in:
+// GET /profile (with auth middleware)
+// PUT /profile (with auth middleware)
+```
+
+### Multiple Attributes
+
+```php
+$app->group([
+    'prefix' => 'admin',
+    'middleware' => ['auth', 'role:admin']
+], function($app) {
+    $app->get('/dashboard', function($request) {
+        return (new Response())->setJsonResponse(['dashboard' => 'Admin data']);
+    });
+    
+    $app->get('/users', function($request) {
+        return (new Response())->setJsonResponse(['users' => 'All users']);
+    });
+});
+
+// Results in:
+// GET /admin/dashboard (with auth + role:admin middleware)
+// GET /admin/users (with auth + role:admin middleware)
+```
+
+## 🔧 Router-Level Route Groups
+
+### Basic Usage
 
 ```php
 use FASTAPI\Router;
+use FASTAPI\Request;
+use FASTAPI\Response;
 
 $router = new Router();
 
-$router->group(['prefix' => 'api'], function($router) {
-    $router->get('/status', function($request) {
-        // Accessible at: /api/status
+// Basic prefix group
+$router->group(['prefix' => 'api/v2'], function($router) {
+    $router->get('/products', function($request) {
+        return (new Response())->setJsonResponse(['products' => []]);
     });
     
-    $router->get('/version', function($request) {
-        // Accessible at: /api/version
+    $router->post('/products', function($request) {
+        $data = $request->getData();
+        return (new Response())->setJsonResponse(['message' => 'Product created']);
     });
 });
+
+// Results in:
+// GET /api/v2/products
+// POST /api/v2/products
 ```
 
-### Route Group with Middleware
+### Group with Controller Namespaces
 
 ```php
-$router->group(['middleware' => [new AuthMiddleware()]], function($router) {
-    $router->get('/profile', function($request) {
-        // This route will execute AuthMiddleware first
-    });
-    
-    $router->post('/logout', function($request) {
-        // This route will also execute AuthMiddleware first
-    });
-});
-```
+// Set controller namespaces
+$router->setControllerNamespaces(['App\\Controllers\\']);
 
-### Combined Prefix and Middleware
-
-```php
+// Group with namespace
 $router->group([
-    'prefix' => 'api/v1',
-    'middleware' => [new LoggingMiddleware(), new AuthMiddleware()]
+    'prefix' => 'api/v2',
+    'namespace' => 'App\\Controllers'
 ], function($router) {
-    $router->get('/users', [$userController, 'index']);
-    // Accessible at: /api/v1/users
-    // Executes: LoggingMiddleware -> AuthMiddleware -> handler
+    $router->get('/products', 'ProductController@index');
+    $router->post('/products', 'ProductController@store');
+    $router->get('/products/:id', 'ProductController@show');
+    $router->put('/products/:id', 'ProductController@update');
+    $router->delete('/products/:id', 'ProductController@destroy');
+});
+
+// Results in:
+// GET /api/v2/products → App\Controllers\ProductController@index
+// POST /api/v2/products → App\Controllers\ProductController@store
+// etc.
+```
+
+## 📋 Group Attributes
+
+### Available Attributes
+
+| Attribute | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `prefix` | string | URL prefix for all routes | `'api/v1'` |
+| `middleware` | array | Middleware to apply | `['auth', 'role:admin']` |
+| `namespace` | string | Controller namespace | `'App\\Controllers'` |
+
+### Prefix Attribute
+
+```php
+// Simple prefix
+$app->group(['prefix' => 'api'], function($app) {
+    $app->get('/status', function() {
+        return (new Response())->setJsonResponse(['status' => 'online']);
+    });
+});
+
+// Nested prefixes
+$app->group(['prefix' => 'api/v1'], function($app) {
+    $app->group(['prefix' => 'users'], function($app) {
+        $app->get('/', function() {
+            return (new Response())->setJsonResponse(['users' => []]);
+        });
+    });
+});
+
+// Results in: GET /api/v1/users
+```
+
+### Middleware Attribute
+
+```php
+// Single middleware
+$app->group(['middleware' => ['auth']], function($app) {
+    $app->get('/protected', function() {
+        return (new Response())->setJsonResponse(['data' => 'Protected']);
+    });
+});
+
+// Multiple middleware
+$app->group(['middleware' => ['auth', 'throttle']], function($app) {
+    $app->get('/api/data', function() {
+        return (new Response())->setJsonResponse(['data' => 'Protected and throttled']);
+    });
+});
+
+// Parameterized middleware
+$app->group(['middleware' => ['role:admin']], function($app) {
+    $app->get('/admin/users', function() {
+        return (new Response())->setJsonResponse(['users' => 'Admin only']);
+    });
 });
 ```
 
-## Nested Route Groups
-
-Route groups can be nested, and child groups inherit attributes from their parents:
+### Namespace Attribute
 
 ```php
-$router->group(['prefix' => 'admin', 'middleware' => [new AuthMiddleware()]], function($router) {
-    $router->get('/dashboard', [$adminController, 'dashboard']);
-    // URL: /admin/dashboard, Middleware: [AuthMiddleware]
-    
-    // Nested group with additional middleware
-    $router->group(['middleware' => [new AdminMiddleware()]], function($router) {
-        $router->get('/users', [$adminController, 'users']);
-        // URL: /admin/users, Middleware: [AuthMiddleware, AdminMiddleware]
+// Set controller namespaces
+$router->setControllerNamespaces([
+    'App\\Controllers\\',
+    'App\\Admin\\Controllers\\'
+]);
+
+// Group with namespace
+$router->group(['namespace' => 'App\\Controllers'], function($router) {
+    $router->get('/users', 'UserController@index');
+    $router->post('/users', 'UserController@store');
+});
+
+// Different namespace
+$router->group(['namespace' => 'App\\Admin\\Controllers'], function($router) {
+    $router->get('/admin/dashboard', 'DashboardController@index');
+    $router->get('/admin/users', 'UserController@index');
+});
+```
+
+## 🔄 Nested Groups
+
+### Basic Nesting
+
+```php
+$app->group(['prefix' => 'api/v1'], function($app) {
+    // Public routes
+    $app->get('/status', function() {
+        return (new Response())->setJsonResponse(['status' => 'online']);
     });
     
-    // Nested group with additional prefix
-    $router->group(['prefix' => 'settings'], function($router) {
-        $router->get('/general', function($request) {
-            // URL: /admin/settings/general, Middleware: [AuthMiddleware]
+    // Protected routes
+    $app->group(['middleware' => ['auth']], function($app) {
+        $app->get('/profile', function() {
+            return (new Response())->setJsonResponse(['profile' => 'User data']);
+        });
+        
+        // Admin routes
+        $app->group(['middleware' => ['role:admin']], function($app) {
+            $app->get('/admin/users', function() {
+                return (new Response())->setJsonResponse(['users' => 'All users']);
+            });
+        });
+    });
+});
+
+// Results in:
+// GET /api/v1/status (no middleware)
+// GET /api/v1/profile (auth middleware)
+// GET /api/v1/admin/users (auth + role:admin middleware)
+```
+
+### Complex Nesting
+
+```php
+$app->group(['prefix' => 'api/v1'], function($app) {
+    // Public API routes
+    $app->group(['prefix' => 'public'], function($app) {
+        $app->get('/status', 'StatusController@index');
+        $app->get('/products', 'ProductController@index');
+    });
+    
+    // User routes
+    $app->group(['prefix' => 'user', 'middleware' => ['auth']], function($app) {
+        $app->get('/profile', 'UserController@profile');
+        $app->put('/profile', 'UserController@updateProfile');
+        
+        // User orders
+        $app->group(['prefix' => 'orders'], function($app) {
+            $app->get('/', 'OrderController@index');
+            $app->post('/', 'OrderController@store');
+            $app->get('/:id', 'OrderController@show');
+        });
+    });
+    
+    // Admin routes
+    $app->group(['prefix' => 'admin', 'middleware' => ['auth', 'role:admin']], function($app) {
+        $app->get('/dashboard', 'AdminController@dashboard');
+        
+        // Admin user management
+        $app->group(['prefix' => 'users'], function($app) {
+            $app->get('/', 'AdminController@users');
+            $app->post('/', 'AdminController@createUser');
+            $app->get('/:id', 'AdminController@showUser');
+            $app->put('/:id', 'AdminController@updateUser');
+            $app->delete('/:id', 'AdminController@deleteUser');
+        });
+        
+        // Admin product management
+        $app->group(['prefix' => 'products'], function($app) {
+            $app->get('/', 'AdminController@products');
+            $app->post('/', 'AdminController@createProduct');
+            $app->get('/:id', 'AdminController@showProduct');
+            $app->put('/:id', 'AdminController@updateProduct');
+            $app->delete('/:id', 'AdminController@deleteProduct');
         });
     });
 });
 ```
 
-## Convenience Methods
+## 🔧 Middleware in Groups
 
-Use HTTP verb methods directly within groups:
+### Middleware Registration
 
 ```php
-$router->group(['prefix' => 'api'], function($router) {
-    $router->get('/users', $handler);          // GET /api/users
-    $router->post('/users', $handler);         // POST /api/users
-    $router->put('/users/:id', $handler);      // PUT /api/users/:id
-    $router->patch('/users/:id', $handler);    // PATCH /api/users/:id
-    $router->delete('/users/:id', $handler);   // DELETE /api/users/:id
-    $router->options('/users', $handler);      // OPTIONS /api/users
+// Register middleware first
+$app->registerMiddleware('auth', AuthMiddleware::class);
+$app->registerMiddleware('role', RoleMiddleware::class);
+$app->registerMiddleware('throttle', ThrottleMiddleware::class);
+$app->registerMiddleware('cors', CorsMiddleware::class);
+```
+
+### Middleware Application
+
+```php
+// Global middleware (applies to all routes)
+$app->addMiddleware(new CorsMiddleware());
+
+// Group-specific middleware
+$app->group(['middleware' => ['auth']], function($app) {
+    // All routes in this group require authentication
+    $app->get('/profile', 'UserController@profile');
+    $app->put('/profile', 'UserController@updateProfile');
+});
+
+// Multiple middleware
+$app->group(['middleware' => ['auth', 'throttle']], function($app) {
+    // Routes with authentication and rate limiting
+    $app->get('/api/data', 'DataController@index');
+    $app->post('/api/data', 'DataController@store');
+});
+
+// Parameterized middleware
+$app->group(['middleware' => ['role:admin']], function($app) {
+    // Admin-only routes
+    $app->get('/admin/users', 'AdminController@users');
+    $app->post('/admin/users', 'AdminController@createUser');
 });
 ```
 
-## Fluent API
-
-Chain methods for a more readable syntax:
+### Middleware Execution Order
 
 ```php
-$router->prefix('api/v1')
-       ->middleware([new AuthMiddleware()])
-       ->group([], function($router) {
-           $router->get('/protected', $handler);
-       });
-```
+// Middleware executes in order: global → group → route-specific
+$app->addMiddleware(new CorsMiddleware());        // 1. Global
+$app->addMiddleware(new LoggingMiddleware());     // 2. Global
 
-## Middleware Execution Order
-
-Middleware executes in the order it's defined:
-
-1. Parent group middleware (outermost first)
-2. Child group middleware
-3. Route-specific middleware (if any)
-
-```php
-$router->group(['middleware' => [new Middleware1()]], function($router) {
-    $router->group(['middleware' => [new Middleware2()]], function($router) {
-        $router->get('/test', $handler);
-        // Execution order: Middleware1 -> Middleware2 -> handler
+$app->group(['middleware' => ['auth']], function($app) {
+    // 3. Group middleware (auth)
+    $app->get('/profile', 'UserController@profile');
+    
+    $app->group(['middleware' => ['role:admin']], function($app) {
+        // 4. Nested group middleware (role:admin)
+        $app->get('/admin/users', 'AdminController@users');
     });
 });
 ```
 
-## Group Attributes
+## 🏷 Namespace Management
 
-### Prefix
-- Automatically adds leading/trailing slashes as needed
-- Nested prefixes are concatenated
-- Empty prefixes are ignored
-
-### Middleware
-- Can be a single middleware instance or array of middleware
-- Child middleware is appended to parent middleware
-- All middleware must implement `MiddlewareInterface`
-
-### Namespace
-- For future use in controller resolution
-- Currently stored but not actively used
-
-## Example Middleware Implementation
+### Controller Namespaces
 
 ```php
-use FASTAPI\Middlewares\MiddlewareInterface;
-use FASTAPI\Request;
+// Set multiple namespaces
+$router->setControllerNamespaces([
+    'App\\Controllers\\',
+    'App\\Admin\\Controllers\\',
+    'App\\Api\\Controllers\\'
+]);
 
-class AuthMiddleware implements MiddlewareInterface {
-    public function handle(Request $request, \Closure $next): void {
-        // Check authentication
-        if (!$this->isAuthenticated($request)) {
-            (new Response())->setJsonResponse(['error' => 'Unauthorized'], 401)->send();
-            return;
-        }
-        
-        // Continue to next middleware/handler
-        $next();
+// Group with specific namespace
+$router->group(['namespace' => 'App\\Controllers'], function($router) {
+    $router->get('/users', 'UserController@index');
+    $router->post('/users', 'UserController@store');
+    $router->get('/users/:id', 'UserController@show');
+});
+
+// Different namespace for admin
+$router->group(['namespace' => 'App\\Admin\\Controllers'], function($router) {
+    $router->get('/admin/dashboard', 'DashboardController@index');
+    $router->get('/admin/users', 'UserController@index');
+});
+```
+
+### Controller Class Example
+
+```php
+<?php
+namespace App\Controllers;
+
+use FASTAPI\Request;
+use FASTAPI\Response;
+
+class UserController
+{
+    public function index(Request $request)
+    {
+        return (new Response())->setJsonResponse([
+            'users' => [
+                ['id' => 1, 'name' => 'John'],
+                ['id' => 2, 'name' => 'Jane']
+            ]
+        ]);
     }
     
-    private function isAuthenticated(Request $request): bool {
-        // Your authentication logic here
-        return true;
+    public function store(Request $request)
+    {
+        $data = $request->getData();
+        
+        // Validation
+        if (empty($data['name']) || empty($data['email'])) {
+            return (new Response())->setJsonResponse([
+                'error' => 'Name and email are required'
+            ], 400);
+        }
+        
+        // Create user logic
+        $user = [
+            'id' => uniqid(),
+            'name' => $data['name'],
+            'email' => $data['email']
+        ];
+        
+        return (new Response())->setJsonResponse([
+            'message' => 'User created successfully',
+            'user' => $user
+        ], 201);
+    }
+    
+    public function show(Request $request, $id)
+    {
+        // Get user logic
+        $user = [
+            'id' => $id,
+            'name' => 'John Doe',
+            'email' => 'john@example.com'
+        ];
+        
+        return (new Response())->setJsonResponse(['user' => $user]);
     }
 }
 ```
 
-## Complete Example
+## 🚀 Advanced Patterns
+
+### API Versioning
 
 ```php
-use FASTAPI\Router;
-
-$router = new Router();
-
-// Public API routes
-$router->group(['prefix' => 'api/v1'], function($router) {
-    $router->get('/status', function($request) {
-        // GET /api/v1/status
-    });
+// API v1
+$app->group(['prefix' => 'api/v1'], function($app) {
+    $app->get('/users', 'UserController@index');
+    $app->post('/users', 'UserController@store');
 });
 
-// Authenticated API routes
-$router->group([
-    'prefix' => 'api/v1',
-    'middleware' => [new AuthMiddleware()]
-], function($router) {
-    $router->get('/profile', [$userController, 'profile']);
-    $router->put('/profile', [$userController, 'updateProfile']);
+// API v2 (with different structure)
+$app->group(['prefix' => 'api/v2'], function($app) {
+    $app->group(['prefix' => 'users'], function($app) {
+        $app->get('/', 'UserController@index');
+        $app->post('/', 'UserController@store');
+        $app->get('/:id', 'UserController@show');
+        $app->put('/:id', 'UserController@update');
+        $app->delete('/:id', 'UserController@destroy');
+    });
+});
+```
+
+### Multi-Tenant Applications
+
+```php
+// Tenant-specific routes
+$app->group(['prefix' => 'tenant/:tenantId'], function($app) {
+    $app->get('/dashboard', 'TenantController@dashboard');
     
-    // Admin-only routes
-    $router->group(['middleware' => [new AdminMiddleware()]], function($router) {
-        $router->get('/admin/users', [$adminController, 'listUsers']);
-        $router->delete('/admin/users/:id', [$adminController, 'deleteUser']);
+    $app->group(['middleware' => ['auth']], function($app) {
+        $app->get('/users', 'TenantController@users');
+        $app->post('/users', 'TenantController@createUser');
+    });
+});
+```
+
+### Modular Applications
+
+```php
+// User module
+$app->group(['prefix' => 'users', 'namespace' => 'App\\Modules\\Users\\Controllers'], function($app) {
+    $app->get('/', 'UserController@index');
+    $app->post('/', 'UserController@store');
+    $app->get('/:id', 'UserController@show');
+    $app->put('/:id', 'UserController@update');
+    $app->delete('/:id', 'UserController@destroy');
+});
+
+// Product module
+$app->group(['prefix' => 'products', 'namespace' => 'App\\Modules\\Products\\Controllers'], function($app) {
+    $app->get('/', 'ProductController@index');
+    $app->post('/', 'ProductController@store');
+    $app->get('/:id', 'ProductController@show');
+    $app->put('/:id', 'ProductController@update');
+    $app->delete('/:id', 'ProductController@destroy');
+});
+```
+
+### Conditional Groups
+
+```php
+// Development routes
+if ($_ENV['APP_ENV'] === 'development') {
+    $app->group(['prefix' => 'dev'], function($app) {
+        $app->get('/debug', 'DevController@debug');
+        $app->get('/logs', 'DevController@logs');
+    });
+}
+
+// Admin routes (only if user is admin)
+$app->group(['prefix' => 'admin', 'middleware' => ['auth', 'role:admin']], function($app) {
+    $app->get('/dashboard', 'AdminController@dashboard');
+    $app->get('/users', 'AdminController@users');
+});
+```
+
+## 🎯 Complete Example
+
+```php
+<?php
+require_once 'vendor/autoload.php';
+
+use FASTAPI\App;
+use FASTAPI\Request;
+use FASTAPI\Response;
+
+$app = App::getInstance();
+
+// Configure application
+$app->setControllerNamespaces(['App\\Controllers\\']);
+
+// Register middleware
+$app->registerMiddleware('auth', AuthMiddleware::class);
+$app->registerMiddleware('role', RoleMiddleware::class);
+$app->registerMiddleware('throttle', ThrottleMiddleware::class);
+
+// Global middleware
+$app->addMiddleware(function($request, $next) {
+    // CORS headers
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    
+    if ($request->getMethod() === 'OPTIONS') {
+        http_response_code(200);
+        return;
+    }
+    
+    $next();
+});
+
+// Public routes
+$app->get('/', function() {
+    return (new Response())->setJsonResponse([
+        'message' => 'Welcome to FastAPI',
+        'version' => '2.2.4'
+    ]);
+});
+
+$app->post('/auth/login', function($request) {
+    $data = $request->getData();
+    // Authentication logic
+    return (new Response())->setJsonResponse(['token' => 'jwt_token']);
+});
+
+// API routes
+$app->group(['prefix' => 'api/v1'], function($app) {
+    
+    // Public API routes
+    $app->get('/status', function() {
+        return (new Response())->setJsonResponse(['status' => 'online']);
+    });
+    
+    $app->get('/products', 'ProductController@index');
+    $app->get('/products/:id', 'ProductController@show');
+    
+    // Protected routes
+    $app->group(['middleware' => ['auth', 'throttle']], function($app) {
+        
+        // User routes
+        $app->group(['prefix' => 'user'], function($app) {
+            $app->get('/profile', 'UserController@profile');
+            $app->put('/profile', 'UserController@updateProfile');
+            
+            // User orders
+            $app->group(['prefix' => 'orders'], function($app) {
+                $app->get('/', 'OrderController@index');
+                $app->post('/', 'OrderController@store');
+                $app->get('/:id', 'OrderController@show');
+                $app->put('/:id', 'OrderController@update');
+            });
+        });
+        
+        // Admin routes
+        $app->group(['prefix' => 'admin', 'middleware' => ['role:admin']], function($app) {
+            $app->get('/dashboard', 'AdminController@dashboard');
+            
+            // Admin user management
+            $app->group(['prefix' => 'users'], function($app) {
+                $app->get('/', 'AdminController@users');
+                $app->post('/', 'AdminController@createUser');
+                $app->get('/:id', 'AdminController@showUser');
+                $app->put('/:id', 'AdminController@updateUser');
+                $app->delete('/:id', 'AdminController@deleteUser');
+            });
+            
+            // Admin product management
+            $app->group(['prefix' => 'products'], function($app) {
+                $app->get('/', 'AdminController@products');
+                $app->post('/', 'AdminController@createProduct');
+                $app->get('/:id', 'AdminController@showProduct');
+                $app->put('/:id', 'AdminController@updateProduct');
+                $app->delete('/:id', 'AdminController@deleteProduct');
+            });
+        });
     });
 });
 
-// Process requests
-$request = new Request();
-$router->dispatch($request);
+// Custom 404 handler
+$app->setNotFoundHandler(function($request) {
+    return (new Response())->setJsonResponse([
+        'error' => 'Route not found',
+        'path' => $request->getUri()
+    ], 404);
+});
+
+// Start the application
+$app->run();
 ```
 
-## Migration from Basic Routing
+## 🏆 Best Practices
 
-### Before (Basic Routing)
-```php
-$router->addRoute('GET', '/api/users', [$controller, 'index']);
-$router->addRoute('POST', '/api/users', [$controller, 'store']);
-$router->addRoute('GET', '/api/users/:id', [$controller, 'show']);
-```
+### 1. Organization
 
-### After (Route Groups)
 ```php
-$router->group(['prefix' => 'api'], function($router) use ($controller) {
-    $router->get('/users', [$controller, 'index']);
-    $router->post('/users', [$controller, 'store']);
-    $router->get('/users/:id', [$controller, 'show']);
+// ✅ Good - Organize by feature
+$app->group(['prefix' => 'api/v1'], function($app) {
+    $app->group(['prefix' => 'users'], function($app) {
+        $app->get('/', 'UserController@index');
+        $app->post('/', 'UserController@store');
+        $app->get('/:id', 'UserController@show');
+        $app->put('/:id', 'UserController@update');
+        $app->delete('/:id', 'UserController@destroy');
+    });
+    
+    $app->group(['prefix' => 'products'], function($app) {
+        $app->get('/', 'ProductController@index');
+        $app->post('/', 'ProductController@store');
+        $app->get('/:id', 'ProductController@show');
+        $app->put('/:id', 'ProductController@update');
+        $app->delete('/:id', 'ProductController@destroy');
+    });
 });
 ```
 
-## Best Practices
-
-1. **Group Related Routes**: Group routes that share common functionality
-2. **Use Descriptive Prefixes**: Make URLs clear and RESTful
-3. **Apply Middleware at Group Level**: Avoid repeating middleware on individual routes
-4. **Limit Nesting Depth**: Keep nested groups shallow for maintainability
-5. **Document Group Structure**: Clearly document your route group hierarchy
-
-## Accessing New Features While Maintaining Compatibility
-
-### getCompiledRoutes() - See Final URLs
-
-Use `getCompiledRoutes()` to see routes with their final URLs (including group prefixes):
+### 2. Middleware Management
 
 ```php
-$router = new Router();
+// ✅ Good - Register middleware once, use everywhere
+$app->registerMiddleware('auth', AuthMiddleware::class);
+$app->registerMiddleware('role', RoleMiddleware::class);
 
-// Old style route
-$router->addRoute('GET', '/users', $handler);
-
-// New style route with group
-$router->group(['prefix' => 'api'], function($router) {
-    $router->get('/posts', $handler);
+// Use consistently
+$app->group(['middleware' => ['auth']], function($app) {
+    // Protected routes
 });
 
-// Original format (backward compatible)
-$routes = $router->getRoutes();
-// $routes[0]['uri'] = '/users'
-// $routes[1]['uri'] = '/posts'  (original URI preserved)
-
-// New format with final URLs
-$compiled = $router->getCompiledRoutes();
-// $compiled[0]['final_uri'] = '/users'
-// $compiled[1]['final_uri'] = '/api/posts'  (includes prefix)
-// $compiled[1]['middleware'] = [...]        (middleware stack)
+$app->group(['middleware' => ['auth', 'role:admin']], function($app) {
+    // Admin routes
+});
 ```
 
-## API Reference
+### 3. Namespace Organization
 
-### Router::group(array $attributes, callable $callback)
-- `$attributes`: Array of group attributes ('prefix', 'middleware', 'namespace')
-- `$callback`: Function that receives the router instance
+```php
+// ✅ Good - Use namespaces for organization
+$router->setControllerNamespaces([
+    'App\\Controllers\\',
+    'App\\Admin\\Controllers\\'
+]);
 
-### Router::getCompiledRoutes()
-- Returns routes with final URIs and group information
-- **NEW:** Use this to see actual URLs that will be matched
-- Maintains backward compatibility by not changing `getRoutes()`
+// Group by namespace
+$router->group(['namespace' => 'App\\Controllers'], function($router) {
+    $router->get('/users', 'UserController@index');
+});
 
-### Router::prefix(string $prefix)
-- Sets prefix for current group context
-- Returns `$this` for method chaining
+$router->group(['namespace' => 'App\\Admin\\Controllers'], function($router) {
+    $router->get('/admin/dashboard', 'DashboardController@index');
+});
+```
 
-### Router::middleware($middleware)
-- Adds middleware to current group context
-- Accepts single middleware or array of middleware
-- Returns `$this` for method chaining
+### 4. Prefix Management
 
-### Router::namespace(string $namespace)
-- Sets namespace for current group context
-- Returns `$this` for method chaining 
+```php
+// ✅ Good - Use meaningful prefixes
+$app->group(['prefix' => 'api/v1'], function($app) {
+    // API version 1
+});
+
+$app->group(['prefix' => 'api/v2'], function($app) {
+    // API version 2
+});
+
+// ✅ Good - Use feature-based prefixes
+$app->group(['prefix' => 'admin'], function($app) {
+    // Admin routes
+});
+
+$app->group(['prefix' => 'user'], function($app) {
+    // User routes
+});
+```
+
+### 5. Error Handling
+
+```php
+// ✅ Good - Set custom error handlers
+$app->setNotFoundHandler(function($request) {
+    return (new Response())->setJsonResponse([
+        'error' => 'Route not found',
+        'path' => $request->getUri()
+    ], 404);
+});
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+1. **Routes not working**
+   ```php
+   // Check if middleware is registered before use
+   $app->registerMiddleware('auth', AuthMiddleware::class);
+   
+   // Then use in groups
+   $app->group(['middleware' => ['auth']], function($app) {
+       // Routes here
+   });
+   ```
+
+2. **Prefix not working**
+   ```php
+   // Ensure prefix is a string
+   $app->group(['prefix' => 'api/v1'], function($app) {
+       // Routes here
+   });
+   ```
+
+3. **Namespace not resolving**
+   ```php
+   // Set controller namespaces
+   $router->setControllerNamespaces(['App\\Controllers\\']);
+   
+   // Use in groups
+   $router->group(['namespace' => 'App\\Controllers'], function($router) {
+       $router->get('/users', 'UserController@index');
+   });
+   ```
+
+## 📖 Related Documentation
+
+- **[App Class Guide](app-class.md)** - Application lifecycle management
+- **[Router Class Guide](router-class.md)** - Advanced routing capabilities
+- **[Middleware Guide](middleware-complete-guide.md)** - Middleware system
+- **[Controller Integration](controller-integration.md)** - Laravel-style controllers
+- **[Complete API Reference](api-reference.md)** - All available methods
+
+---
+
+**Next**: [Middleware Guide](middleware-complete-guide.md) → [Controller Integration](controller-integration.md) → [Error Handling Guide](error-handling.md) 

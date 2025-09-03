@@ -12,6 +12,8 @@ use FASTAPI\Middlewares\MiddlewareInterface;
  */
 class Router
 {
+    private static $instance = null; // Singleton instance
+
     /** @var array $routes An array to store the registered routes */
     private $routes = [];
     
@@ -30,6 +32,41 @@ class Router
     
     /** @var array $controllerNamespaces Namespaces for controller resolution */
     private $controllerNamespaces = ['App\\Controllers\\'];
+
+    /**
+     * Private constructor to prevent direct instantiation.
+     */
+    private function __construct()
+    {
+        // Initialize router
+    }
+
+    /**
+     * Prevent cloning of the instance.
+     */
+    private function __clone() {}
+
+    /**
+     * Prevent unserialization of the instance.
+     */
+    public function __wakeup()
+    {
+        throw new \Exception("Cannot unserialize a singleton.");
+    }
+
+    /**
+     * Retrieves the singleton instance of the Router class.
+     *
+     * @return Router The singleton instance.
+     */
+    public static function getInstance()
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
 
     /**
      * Registers middleware with a string alias for easy reference.

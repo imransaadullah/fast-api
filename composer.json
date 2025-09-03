@@ -11,6 +11,7 @@
     ],
     "require": {
       "php": "^8.0",
+      "ext-redis": "*",
       "firebase/php-jwt": "^6.11"
     },
     "autoload": {
