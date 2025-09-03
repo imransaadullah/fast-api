@@ -95,7 +95,7 @@ class RateLimiter
     /**
      * Check if a request is rate limited
      */
-    public function isLimited(string $key, int $maxRequests = null, int $timeWindow = null): bool
+    public function isLimited(string $key, ?int $maxRequests = null, ?int $timeWindow = null): bool
     {
         $maxRequests = $maxRequests ?? $this->config['max_requests'] ?? 100;
         $timeWindow = $timeWindow ?? $this->config['time_window'] ?? 60;

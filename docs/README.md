@@ -20,6 +20,7 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 - **[Rate Limiting Quick Reference](rate-limiting-quick-reference.md)** - Quick setup and troubleshooting guide
 - **[Auto-Fallback Rate Limiting](auto-fallback-rate-limiting.md)** - Revolutionary auto-fallback system with Redis → Database → Memory → File fallback chain
 - **[Auto-Fallback Quick Reference](auto-fallback-quick-reference.md)** - Quick reference for the auto-fallback system
+- **[App Class Rate Limiting](app-class.md#rate-limiting)** - Built-in automatic rate limiting enforcement
 
 ### 🌐 WebSocket Support
 - **[WebSocket Guide](websocket.md)** - Complete WebSocket implementation guide

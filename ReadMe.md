@@ -16,6 +16,7 @@ FastAPI is a lightweight, powerful PHP framework designed to make building APIs 
 - **100% Backward Compatible**: All new features preserve existing functionality
 - **Type Safety**: Proper error handling and validation throughout
 - **Singleton App Pattern**: Efficient application lifecycle management
+- **Clean Architecture**: Refactored App class with no duplicate methods and clear separation of concerns
 
 ## 📦 Installation
 
@@ -1094,6 +1095,57 @@ class ApiResponse {
     }
 }
 ```
+
+## 🆕 Recent Improvements (v2.3.1)
+
+### App Class Refactoring & Clean Architecture
+
+The App class has been completely refactored to eliminate duplicate methods and provide a cleaner, more maintainable architecture:
+
+#### ✅ **What Was Improved:**
+- **Removed Duplicate Methods**: Eliminated redundant rate limiting methods that duplicated RateLimiter functionality
+- **Clean Separation of Concerns**: App class now focuses on high-level application logic, RateLimiter handles all storage details
+- **Automatic Rate Limiting**: Once configured with `setRateLimit()`, rate limiting is automatically enforced for every request
+- **Better Performance**: No more duplicate IP detection or storage logic
+- **Easier Maintenance**: Changes to rate limiting only need to be made in one place
+
+#### 🔧 **How It Works Now:**
+```php
+$app = App::getInstance();
+
+// Enable automatic rate limiting (100 requests per minute)
+$app->setRateLimit(100, 60);
+
+// Get RateLimiter for advanced configuration
+$rateLimiter = $app->getRateLimiter();
+$status = $rateLimiter->getStorageStatus();
+$activeStorage = $rateLimiter->getActiveStorage();
+
+// Your existing code still works exactly the same!
+$app->group(['prefix' => 'api/v1', 'middleware' => ['auth', 'rate_limit']], function($app) {
+    $app->get('/test', function($request) {
+        return (new Response())->setJsonResponse([
+            'error' => 0,
+            'message' => 'success',
+            'data' => $request->getAttributes()
+        ]);
+    });
+});
+```
+
+#### 🎯 **Benefits:**
+- **Zero Client Code Changes**: Your existing applications work without modification
+- **Better Performance**: Automatic storage fallback (Redis → Database → Memory → File)
+- **Cleaner Code**: No more duplicate methods or redundant logic
+- **Easier Debugging**: Clear separation between App and RateLimiter responsibilities
+- **Future-Proof**: Cleaner architecture makes future enhancements easier
+
+#### 📚 **Documentation:**
+- **[App Class Guide](docs/app-class.md#rate-limiting)** - Complete App class documentation
+- **[Auto-Fallback Rate Limiting](docs/auto-fallback-rate-limiting.md)** - Advanced rate limiting features
+- **[Rate Limiting Quick Reference](docs/rate-limiting-quick-reference.md)** - Quick setup guide
+
+---
 
 ## 🔍 Troubleshooting
 

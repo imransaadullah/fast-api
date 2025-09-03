@@ -325,6 +325,37 @@ $app->setRateLimit(1000, 3600);
 $app->setRateLimit(10, 1);
 ```
 
+**Note**: Once configured, rate limiting is automatically enforced for every request. The system will automatically block requests that exceed the limit with a 429 status response.
+
+#### `getRateLimiter()`
+```php
+/**
+ * Gets the RateLimiter instance for advanced configuration.
+ * @return RateLimiter The rate limiter instance
+ */
+
+// Get rate limiter for advanced configuration
+$rateLimiter = $app->getRateLimiter();
+
+// Check storage status
+$status = $rateLimiter->getStorageStatus();
+$activeStorage = $rateLimiter->getActiveStorage();
+
+// Force storage fallback
+$rateLimiter->forceFallback();
+
+// Configure advanced options
+$rateLimiter->configure([
+    'storage_priority' => ['database', 'redis', 'memory', 'file']
+]);
+```
+
+**Advanced Rate Limiting Features:**
+- **Automatic Storage Fallback**: Redis → Database → Memory → File
+- **Storage Health Monitoring**: Automatic detection of available backends
+- **Performance Optimization**: Uses fastest available storage
+- **Fail-Open Design**: Continues working even if storage backends fail
+
 ### Controller Namespaces
 
 #### `setControllerNamespaces($namespaces)`

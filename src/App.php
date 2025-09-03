@@ -26,6 +26,9 @@ class App
     /** @var RateLimiter */
     private $rateLimiter;
 
+    /** @var array Rate limiting configuration */
+    private $config = [];
+
     /**
      * Initializes a new instance of the App class.
      */
@@ -144,10 +147,12 @@ class App
      */
     public function setRateLimit(int $maxRequests, int $timeWindow)
     {
-        $this->rateLimiter->configure([
+        $this->config = [
             'max_requests' => $maxRequests,
             'time_window' => $timeWindow
-        ]);
+        ];
+        
+        $this->rateLimiter->configure($this->config);
         return $this;
     }
 
@@ -157,6 +162,68 @@ class App
     public function getRateLimiter()
     {
         return $this->rateLimiter;
+    }
+
+    /**
+     * Enforce rate limiting for incoming requests
+     * This is called automatically for every request if rate limiting is configured
+     */
+    private function enforceRateLimit(Request $request): void
+    {
+        // Only enforce if rate limiting is configured
+        if (empty($this->config)) {
+            return;
+        }
+
+        $ip = $this->getClientIp();
+        $key = "rate_limit:{$ip}";
+        
+        // Get limits from configuration or environment
+        $maxRequests = $this->config['max_requests'] ?? $_ENV['RATE_LIMIT_MAX'] ?? 100;
+        $timeWindow = $this->config['time_window'] ?? $_ENV['RATE_LIMIT_WINDOW'] ?? 60;
+        
+        if ($this->rateLimiter->isLimited($key, $maxRequests, $timeWindow)) {
+            // Block the request with detailed response
+            (new Response())->setJsonResponse([
+                'error' => 1, 
+                'message' => 'Rate limit exceeded. Please try again later.',
+                'data' => [
+                    'limit' => $maxRequests,
+                    'window' => $timeWindow,
+                    'storage' => $this->rateLimiter->getActiveStorage(),
+                    'current_count' => $this->rateLimiter->getCurrentCount($key, $timeWindow),
+                    'ttl' => $this->rateLimiter->getTTL($key)
+                ]
+            ], 429)->send();
+        }
+    }
+
+    /**
+     * Get client IP address with proxy support
+     */
+    private function getClientIp(): string
+    {
+        $headers = [
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR'
+        ];
+        
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                
+                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    return $ip;
+                }
+            }
+        }
+        
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     }
 
     /**
@@ -283,6 +350,9 @@ class App
 
         $data = $data ?? [];
         $request = new Request($requestMethod, $requestUri, $data);
+
+        // Enforce rate limiting if configured
+        $this->enforceRateLimit($request);
 
         // Execute middlewares using chaining
         $middlewareIndex = 0;
