@@ -106,6 +106,60 @@ class App
     }
 
     /**
+     * Adds a middleware function to be executed before the request handler.
+     *
+     * @param callable $middleware A function that takes a Request object and can modify it.
+     * @return App
+     */
+    public function use(callable $middleware)
+    {
+        $this->middlewares[] = $middleware;
+        return $this;
+    }
+
+    /**
+     * Sets a handler for 404 Not Found errors.
+     *
+     * @param callable $handler A function to handle 404 responses.
+     * @return App
+     */
+    public function setNotFoundHandler(callable $handler)
+    {
+        $this->notFoundHandler = $handler;
+        return $this;
+    }
+
+    /**
+     * Retrieves all registered routes.
+     *
+     * @return array An array containing all registered routes.
+     */
+    public function getRoutes()
+    {
+        return $this->router->getRoutes();
+    }
+
+    /**
+     * Set rate limiting configuration (wrapper for RateLimiter)
+     */
+    public function setRateLimit(int $maxRequests, int $timeWindow)
+    {
+        $this->rateLimiter->configure([
+            'max_requests' => $maxRequests,
+            'time_window' => $timeWindow
+        ]);
+        return $this;
+    }
+
+    /**
+     * Get the RateLimiter instance for advanced configuration
+     */
+    public function getRateLimiter()
+    {
+        return $this->rateLimiter;
+    }
+
+    /**
      * Registers a new route for handling HTTP GET requests.
      *
      * @param string $uri The URI pattern of the route.
@@ -158,7 +212,7 @@ class App
     }
 
     /**
-     * Registers a new route for handling HTTP DELETE requests.
+     * Registers a new route for handling HTTP PATCH requests.
      *
      * @param string $uri The URI pattern of the route.
      * @param mixed $handler The handler for the route.
@@ -198,136 +252,6 @@ class App
     }
 
     /**
-     * Adds a middleware function to be executed before the request handler.
-     *
-     * @param callable $middleware A function that takes a Request object and can modify it.
-     * @return App
-     */
-    public function use(callable $middleware)
-    {
-        $this->middlewares[] = $middleware;
-        return $this;
-    }
-
-    /**
-     * Sets a handler for 404 Not Found errors.
-     *
-     * @param callable $handler A function to handle 404 responses.
-     * @return App
-     */
-    public function setNotFoundHandler(callable $handler)
-    {
-        $this->notFoundHandler = $handler;
-        return $this;
-    }
-
-    /**
-     * Retrieves all registered routes.
-     *
-     * @return array An array containing all registered routes.
-     */
-    public function getRoutes()
-    {
-        return $this->router->getRoutes();
-    }
-
-    /**
-     * Set rate limiting configuration
-     */
-    public function setRateLimit(int $maxRequests, int $timeWindow)
-    {
-        $this->rateLimiter->configure([
-            'max_requests' => $maxRequests,
-            'time_window' => $timeWindow
-        ]);
-        return $this;
-    }
-
-    /**
-     * Check rate limiting for a request
-     */
-    private function rateLimit(Request $request)
-    {
-        $ip = $this->getClientIp();
-        $key = "rate_limit:{$ip}";
-        
-        if ($this->rateLimiter->isLimited($key)) {
-            // Block the request
-            (new Response())->setJsonResponse([
-                'error' => 1, 
-                'message' => 'Rate limit exceeded. Please try again later.',
-                'data' => [
-                    'limit' => $_ENV['RATE_LIMIT_MAX'] ?? 100,
-                    'window' => $_ENV['RATE_LIMIT_WINDOW'] ?? 60,
-                    'storage' => $this->rateLimiter->getActiveStorage()
-                ]
-            ], 429)->send();
-        }
-    }
-
-    /**
-     * Get client IP address with proxy support
-     */
-    private function getClientIp(): string
-    {
-        $headers = [
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'HTTP_CLIENT_IP',
-            'REMOTE_ADDR'
-        ];
-        
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return $ip;
-                }
-            }
-        }
-        
-        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-    }
-
-    /**
-     * Get rate limit information for a specific key
-     */
-    public function getRateLimitInfo(?string $key = null): array
-    {
-        $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        return $this->rateLimiter->getInfo($key);
-    }
-
-    /**
-     * Reset rate limit for a specific key
-     */
-    public function resetRateLimit(?string $key = null): bool
-    {
-        $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-        return $this->rateLimiter->reset($key);
-    }
-
-    /**
-     * Get current rate limiting storage backend
-     */
-    public function getRateLimitStorage(): string
-    {
-        return $this->rateLimiter->getActiveStorage();
-    }
-
-    /**
-     * Get available rate limiting storage backends
-     */
-    public function getAvailableRateLimitStorages(): array
-    {
-        return $this->rateLimiter->getAvailableStorages();
-    }
-
-    /**
      * Runs the application, dispatching the incoming HTTP request to the appropriate route handler.
      *
      * @return void
@@ -359,9 +283,6 @@ class App
 
         $data = $data ?? [];
         $request = new Request($requestMethod, $requestUri, $data);
-
-        // Enforce rate limiting
-        $this->rateLimit($request);
 
         // Execute middlewares using chaining
         $middlewareIndex = 0;
@@ -402,47 +323,4 @@ class App
             call_user_func($this->notFoundHandler, $request);
         }
     }
-    // public function run()
-    // {
-    //     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-    //     $requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
-    //     $requestUri = $_SERVER['REQUEST_URI'] ?? '';
-    //     $files = $_FILES;
-
-    //     $data = null;
-
-    //     if ($contentType === 'application/json' && $requestMethod && $requestUri) {
-    //         $jsonInput = file_get_contents('php://input');
-
-    //         if ($jsonInput !== false) {
-    //             $data = json_decode($jsonInput, true);
-
-    //             if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
-    //                 // Handle JSON decoding error
-    //             }
-    //         }
-    //     } elseif ($requestMethod === 'POST') {
-    //         $data = $_POST;
-    //     } elseif ($requestMethod === 'GET') {
-    //         $data = $_GET;
-    //     }
-
-    //     $data = $data ?? [];
-    //     $request = new Request($requestMethod, $requestUri, $data);
-
-    //     // Enforce rate limiting
-    //     $this->rateLimit($request);
-
-    //     // Execute middlewares
-    //     foreach ($this->middlewares as $middleware) {
-    //         $middleware($request);
-    //     }
-
-    //     // Dispatch the request
-    //     $dispatched = $this->router->dispatch($request);
-
-    //     if (!$dispatched && $this->notFoundHandler) {
-    //         call_user_func($this->notFoundHandler, $request);
-    //     }
-    // }
 }
