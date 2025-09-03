@@ -138,6 +138,16 @@ class Request
     }
 
     /**
+     * Gets all dynamic attributes.
+     *
+     * @return array An array containing all attributes.
+     */
+    public function getAttributes(): array
+    {
+        return $this->properties;
+    }
+
+    /**
      * Magic method to dynamically set a property.
      *
      * @param string $name The property name.
