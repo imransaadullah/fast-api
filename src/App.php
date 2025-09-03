@@ -5,6 +5,7 @@ namespace FASTAPI;
 use FASTAPI\Middlewares\MiddlewareInterface;
 use FASTAPI\Router as Router;
 use FASTAPI\Request as Request;
+use FASTAPI\RateLimiter\RateLimiter as RateLimiter;
 
 /**
  * The App class represents the main application that handles incoming HTTP requests and routes them to appropriate handlers.
@@ -22,7 +23,7 @@ class App
     /** @var array $middlewares List of middleware functions to be executed for every request. */
     private $middlewares = [];
     
-    /** @var \FASTAPI\RateLimiter\RateLimiter */
+    /** @var RateLimiter */
     private $rateLimiter;
 
     /**
@@ -31,7 +32,7 @@ class App
     public function __construct()
     {
         $this->router = Router::getInstance();
-        $this->rateLimiter = \FASTAPI\RateLimiter\RateLimiter::getInstance();
+        $this->rateLimiter = RateLimiter::getInstance();
     }
 
     /**
@@ -247,21 +248,55 @@ class App
      */
     private function rateLimit(Request $request)
     {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $ip = $this->getClientIp();
+        $key = "rate_limit:{$ip}";
         
-        if ($this->rateLimiter->isLimited($ip)) {
+        if ($this->rateLimiter->isLimited($key)) {
             // Block the request
             (new Response())->setJsonResponse([
                 'error' => 1, 
-                'message' => 'Too many requests. Please try again later.'
+                'message' => 'Rate limit exceeded. Please try again later.',
+                'data' => [
+                    'limit' => $_ENV['RATE_LIMIT_MAX'] ?? 100,
+                    'window' => $_ENV['RATE_LIMIT_WINDOW'] ?? 60,
+                    'storage' => $this->rateLimiter->getActiveStorage()
+                ]
             ], 429)->send();
         }
     }
 
     /**
+     * Get client IP address with proxy support
+     */
+    private function getClientIp(): string
+    {
+        $headers = [
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR'
+        ];
+        
+        foreach ($headers as $header) {
+            if (!empty($_SERVER[$header])) {
+                $ip = $_SERVER[$header];
+                if (strpos($ip, ',') !== false) {
+                    $ip = trim(explode(',', $ip)[0]);
+                }
+                
+                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                    return $ip;
+                }
+            }
+        }
+        
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    }
+
+    /**
      * Get rate limit information for a specific key
      */
-    public function getRateLimitInfo(string $key = null): array
+    public function getRateLimitInfo(?string $key = null): array
     {
         $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
         return $this->rateLimiter->getInfo($key);
@@ -270,7 +305,7 @@ class App
     /**
      * Reset rate limit for a specific key
      */
-    public function resetRateLimit(string $key = null): bool
+    public function resetRateLimit(?string $key = null): bool
     {
         $key = $key ?? ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
         return $this->rateLimiter->reset($key);

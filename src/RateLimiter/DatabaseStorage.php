@@ -3,15 +3,15 @@
 namespace FASTAPI\RateLimiter;
 
 /**
- * Database storage backend for rate limiting
+ * Database-based rate limiting storage
+ * Persistent storage with automatic cleanup and transaction support
  */
 class DatabaseStorage implements StorageInterface
 {
     /** @var \PDO|null */
     private $pdo;
-
-    /** @var string */
     private $tableName = 'rate_limits';
+    private $connected = false;
 
     public function __construct()
     {
@@ -19,108 +19,141 @@ class DatabaseStorage implements StorageInterface
     }
 
     /**
-     * Connect to database
+     * Check if database is available and working
      */
-    private function connect(): bool
+    public function isAvailable(): bool
+    {
+        if (!$this->connected) {
+            $this->connect();
+        }
+        return $this->connected && $this->test();
+    }
+
+    /**
+     * Test database connection
+     */
+    public function test(): bool
     {
         try {
-            $dsn = $_ENV['DATABASE_URL'] ?? $this->buildDsn();
-            
-            if (!$dsn) {
-                throw new \Exception('No database configuration found');
+            if (!$this->pdo) {
+                return false;
             }
-
-            $this->pdo = new \PDO($dsn, 
-                $_ENV['DB_USERNAME'] ?? $_ENV['DB_USER'] ?? '', 
-                $_ENV['DB_PASSWORD'] ?? $_ENV['DB_PASS'] ?? '',
-                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
-            );
-
-            $this->createTable();
+            $this->pdo->query('SELECT 1');
             return true;
-
         } catch (\Exception $e) {
-            $this->pdo = null;
             return false;
         }
     }
 
     /**
-     * Build DSN from environment variables
+     * Connect to database
      */
-    private function buildDsn(): ?string
+    private function connect(): void
     {
-        $host = $_ENV['DB_HOST'] ?? null;
-        $port = $_ENV['DB_PORT'] ?? null;
-        $database = $_ENV['DB_DATABASE'] ?? $_ENV['DB_NAME'] ?? null;
-        $driver = $_ENV['DB_DRIVER'] ?? 'mysql';
+        try {
+            if (!extension_loaded('pdo')) {
+                $this->connected = false;
+                return;
+            }
 
-        if (!$host || !$database) {
-            return null;
+            $dsn = $this->buildDSN();
+            $this->pdo = new \PDO($dsn, 
+                $_ENV['DB_USERNAME'] ?? 'root', 
+                $_ENV['DB_PASSWORD'] ?? '');
+            
+            $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $this->pdo->setAttribute(\PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC);
+            
+            $this->connected = true;
+            $this->ensureTableExists();
+
+        } catch (\Exception $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            $this->connected = false;
         }
+    }
+
+    /**
+     * Build database DSN
+     */
+    private function buildDSN(): string
+    {
+        if (isset($_ENV['DATABASE_URL'])) {
+            return $_ENV['DATABASE_URL'];
+        }
+
+        $driver = $_ENV['DB_DRIVER'] ?? 'mysql';
+        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        $port = $_ENV['DB_PORT'] ?? '';
+        $database = $_ENV['DB_DATABASE'] ?? 'test';
+        $charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
 
         switch ($driver) {
             case 'mysql':
-                $port = $port ?: 3306;
-                return "mysql:host={$host};port={$port};dbname={$database};charset=utf8mb4";
+                $port = $port ? ":{$port}" : '';
+                return "mysql:host={$host}{$port};dbname={$database};charset={$charset}";
             
             case 'pgsql':
-                $port = $port ?: 5432;
-                return "pgsql:host={$host};port={$port};dbname={$database}";
+                $port = $port ? ";port={$port}" : '';
+                return "pgsql:host={$host}{$port};dbname={$database}";
             
             case 'sqlite':
                 return "sqlite:{$database}";
             
             default:
-                return null;
+                return "mysql:host={$host};dbname={$database};charset={$charset}";
         }
     }
 
     /**
-     * Create rate limits table if it doesn't exist
+     * Ensure rate limits table exists
      */
-    private function createTable(): void
+    private function ensureTableExists(): void
     {
-        if (!$this->pdo) {
-            return;
-        }
-
-        $driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
-        
-        switch ($driver) {
-            case 'mysql':
+        try {
+            $driver = $_ENV['DB_DRIVER'] ?? 'mysql';
+            
+            if ($driver === 'mysql') {
                 $sql = "CREATE TABLE IF NOT EXISTS {$this->tableName} (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
                     `key` VARCHAR(255) NOT NULL,
-                    `timestamp` BIGINT NOT NULL,
-                    `count` INT DEFAULT 1,
-                    PRIMARY KEY (`key`, `timestamp`),
-                    INDEX `idx_key_time` (`key`, `timestamp`)
-                ) ENGINE=InnoDB";
-                break;
-            
-            case 'pgsql':
+                    count INT DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_key_time (`key`, created_at),
+                    INDEX idx_created_at (created_at)
+                )";
+            } elseif ($driver === 'pgsql') {
                 $sql = "CREATE TABLE IF NOT EXISTS {$this->tableName} (
+                    id BIGSERIAL PRIMARY KEY,
                     \"key\" VARCHAR(255) NOT NULL,
-                    timestamp BIGINT NOT NULL,
                     count INTEGER DEFAULT 1,
-                    PRIMARY KEY (\"key\", timestamp)
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT idx_key_time UNIQUE (\"key\", created_at)
                 )";
-                break;
-            
-            case 'sqlite':
+                
+                // Create indexes
+                $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_key_time ON {$this->tableName} (\"key\", created_at)");
+                $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_created_at ON {$this->tableName} (created_at)");
+            } else {
                 $sql = "CREATE TABLE IF NOT EXISTS {$this->tableName} (
-                    \"key\" TEXT NOT NULL,
-                    timestamp INTEGER NOT NULL,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `key` VARCHAR(255) NOT NULL,
                     count INTEGER DEFAULT 1,
-                    PRIMARY KEY (\"key\", timestamp)
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )";
-                break;
+                
+                // Create indexes
+                $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_key_time ON {$this->tableName} (`key`, created_at)");
+                $this->pdo->exec("CREATE INDEX IF NOT EXISTS idx_created_at ON {$this->tableName} (created_at)");
+            }
             
-            default:
-                return;
+            $this->pdo->exec($sql);
+            
+        } catch (\Exception $e) {
+            error_log("Failed to create rate limits table: " . $e->getMessage());
         }
-
-        $this->pdo->exec($sql);
     }
 
     /**
@@ -128,27 +161,27 @@ class DatabaseStorage implements StorageInterface
      */
     public function getCurrentCount(string $key, int $timeWindow): int
     {
-        if (!$this->pdo) {
-            throw new \Exception('Database not available');
+        try {
+            if (!$this->isAvailable()) {
+                return 0;
+            }
+
+            $this->cleanupExpired($timeWindow);
+            
+            $stmt = $this->pdo->prepare("
+                SELECT SUM(count) as total 
+                FROM {$this->tableName} 
+                WHERE `key` = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+            ");
+            
+            $stmt->execute([$key, $timeWindow]);
+            $result = $stmt->fetch();
+            
+            return (int)($result['total'] ?? 0);
+        } catch (\Exception $e) {
+            error_log("Database getCurrentCount failed: " . $e->getMessage());
+            return 0;
         }
-
-        $currentTime = time();
-        $windowStart = $currentTime - $timeWindow;
-
-        // Clean expired entries
-        $this->cleanExpiredEntries($key, $windowStart);
-
-        // Get current count
-        $stmt = $this->pdo->prepare("
-            SELECT SUM(count) as total 
-            FROM {$this->tableName} 
-            WHERE `key` = ? AND timestamp > ?
-        ");
-        
-        $stmt->execute([$key, $windowStart]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        return (int)($result['total'] ?? 0);
     }
 
     /**
@@ -156,131 +189,159 @@ class DatabaseStorage implements StorageInterface
      */
     public function incrementCount(string $key, int $timeWindow): bool
     {
-        if (!$this->pdo) {
-            throw new \Exception('Database not available');
-        }
-
-        $currentTime = time();
-        $windowStart = $currentTime - $timeWindow;
-
-        // Clean expired entries first
-        $this->cleanExpiredEntries($key, $windowStart);
-
-        // Try to update existing entry for current minute
-        $minuteTimestamp = floor($currentTime / 60) * 60;
-        
-        $stmt = $this->pdo->prepare("
-            INSERT INTO {$this->tableName} (`key`, timestamp, count) 
-            VALUES (?, ?, 1)
-            ON DUPLICATE KEY UPDATE count = count + 1
-        ");
-
         try {
-            return $stmt->execute([$key, $minuteTimestamp]);
-        } catch (\PDOException $e) {
-            // Handle non-MySQL databases
-            if (strpos($e->getMessage(), 'ON DUPLICATE KEY') !== false) {
-                return $this->incrementCountFallback($key, $minuteTimestamp);
+            if (!$this->isAvailable()) {
+                return false;
             }
-            throw $e;
-        }
-    }
 
-    /**
-     * Fallback increment for non-MySQL databases
-     */
-    private function incrementCountFallback(string $key, int $timestamp): bool
-    {
-        // Check if entry exists
-        $stmt = $this->pdo->prepare("
-            SELECT count FROM {$this->tableName} 
-            WHERE `key` = ? AND timestamp = ?
-        ");
-        $stmt->execute([$key, $timestamp]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        if ($result) {
-            // Update existing
+            $this->cleanupExpired($timeWindow);
+            
             $stmt = $this->pdo->prepare("
-                UPDATE {$this->tableName} 
-                SET count = count + 1 
-                WHERE `key` = ? AND timestamp = ?
+                INSERT INTO {$this->tableName} (`key`, count, created_at) 
+                VALUES (?, 1, NOW())
             ");
-            return $stmt->execute([$key, $timestamp]);
-        } else {
-            // Insert new
-            $stmt = $this->pdo->prepare("
-                INSERT INTO {$this->tableName} (`key`, timestamp, count) 
-                VALUES (?, ?, 1)
-            ");
-            return $stmt->execute([$key, $timestamp]);
+            
+            return $stmt->execute([$key]);
+        } catch (\Exception $e) {
+            error_log("Database incrementCount failed: " . $e->getMessage());
+            return false;
         }
     }
 
     /**
-     * Clean expired entries
+     * Check if a key is rate limited
      */
-    private function cleanExpiredEntries(string $key, int $windowStart): void
+    public function isLimited(string $key, int $maxRequests, int $timeWindow): bool
     {
-        if (!$this->pdo) {
-            return;
-        }
+        try {
+            if (!$this->isAvailable()) {
+                return false;
+            }
 
-        $stmt = $this->pdo->prepare("
-            DELETE FROM {$this->tableName} 
-            WHERE `key` = ? AND timestamp <= ?
-        ");
-        $stmt->execute([$key, $windowStart]);
+            $this->cleanupExpired($timeWindow);
+            
+            $currentCount = $this->getCurrentCount($key, $timeWindow);
+            
+            if ($currentCount >= $maxRequests) {
+                return true;
+            }
+
+            // Increment count
+            return $this->incrementCount($key, $timeWindow);
+        } catch (\Exception $e) {
+            error_log("Database isLimited failed: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
-     * Reset count for a key
+     * Reset rate limit for a key
      */
     public function reset(string $key): bool
     {
-        if (!$this->pdo) {
-            throw new \Exception('Database not available');
-        }
+        try {
+            if (!$this->isAvailable()) {
+                return false;
+            }
 
-        $stmt = $this->pdo->prepare("DELETE FROM {$this->tableName} WHERE `key` = ?");
-        return $stmt->execute([$key]);
+            $stmt = $this->pdo->prepare("DELETE FROM {$this->tableName} WHERE `key` = ?");
+            return $stmt->execute([$key]);
+        } catch (\Exception $e) {
+            error_log("Database reset failed: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
-     * Get detailed info for a key
+     * Get rate limit information for a key
      */
     public function getInfo(string $key, int $timeWindow): array
     {
-        if (!$this->pdo) {
-            throw new \Exception('Database not available');
+        try {
+            if (!$this->isAvailable()) {
+                return $this->getDefaultInfo();
+            }
+
+            $this->cleanupExpired($timeWindow);
+            
+            $currentCount = $this->getCurrentCount($key, $timeWindow);
+            $ttl = $this->getTTL($key);
+
+            return [
+                'count' => $currentCount,
+                'remaining' => max(0, 100 - $currentCount),
+                'reset_time' => time() + $timeWindow,
+                'storage' => 'database',
+                'ttl' => $ttl ?: $timeWindow
+            ];
+        } catch (\Exception $e) {
+            error_log("Database getInfo failed: " . $e->getMessage());
+            return $this->getDefaultInfo();
         }
+    }
 
-        $currentTime = time();
-        $windowStart = $currentTime - $timeWindow;
+    /**
+     * Get TTL for a key
+     */
+    public function getTTL(string $key): ?int
+    {
+        try {
+            if (!$this->isAvailable()) {
+                return null;
+            }
 
-        // Clean expired entries
-        $this->cleanExpiredEntries($key, $windowStart);
+            $stmt = $this->pdo->prepare("
+                SELECT created_at 
+                FROM {$this->tableName} 
+                WHERE `key` = ? 
+                ORDER BY created_at ASC 
+                LIMIT 1
+            ");
+            
+            $stmt->execute([$key]);
+            $result = $stmt->fetch();
+            
+            if ($result && isset($result['created_at'])) {
+                $createdTime = strtotime($result['created_at']);
+                $elapsed = time() - $createdTime;
+                return max(0, 60 - $elapsed);
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            error_log("Database getTTL failed: " . $e->getMessage());
+            return null;
+        }
+    }
 
-        // Get count and oldest timestamp
-        $stmt = $this->pdo->prepare("
-            SELECT SUM(count) as total, MIN(timestamp) as oldest 
-            FROM {$this->tableName} 
-            WHERE `key` = ? AND timestamp > ?
-        ");
-        
-        $stmt->execute([$key, $windowStart]);
-        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+    /**
+     * Clean up expired entries
+     */
+    private function cleanupExpired(int $timeWindow): void
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                DELETE FROM {$this->tableName} 
+                WHERE created_at < DATE_SUB(NOW(), INTERVAL ? SECOND)
+            ");
+            
+            $stmt->execute([$timeWindow]);
+        } catch (\Exception $e) {
+            error_log("Database cleanup failed: " . $e->getMessage());
+        }
+    }
 
-        $count = (int)($result['total'] ?? 0);
-        $oldestTimestamp = (int)($result['oldest'] ?? $currentTime);
-        $remaining = max(0, ($_ENV['RATE_LIMIT_MAX'] ?? 100) - $count);
-        $resetTime = $oldestTimestamp + $timeWindow;
-
+    /**
+     * Get default info when database is unavailable
+     */
+    private function getDefaultInfo(): array
+    {
         return [
-            'count' => $count,
-            'remaining' => $remaining,
-            'reset_time' => $resetTime,
-            'storage' => 'database'
+            'count' => 0,
+            'remaining' => 100,
+            'reset_time' => time() + 60,
+            'storage' => 'database',
+            'ttl' => 60
         ];
     }
 }

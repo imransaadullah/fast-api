@@ -11,7 +11,7 @@ FastAPI is a lightweight, powerful PHP framework designed to make building APIs 
 - **Request/Response Handling**: Rich HTTP request and response objects with multiple content types
 - **Custom Time Utilities**: Advanced date/time manipulation and formatting
 - **String & Array Utilities**: Comprehensive utility methods for common operations
-- **Rate Limiting**: Built-in request rate limiting with IP-based tracking
+- **Rate Limiting**: Revolutionary auto-fallback rate limiting with Redis → Database → Memory → File fallback chain
 - **WebSocket Support**: Real-time WebSocket server with broadcasting capabilities
 - **100% Backward Compatible**: All new features preserve existing functionality
 - **Type Safety**: Proper error handling and validation throughout
@@ -987,7 +987,7 @@ $app->run();
 ## 🔒 Security Features
 
 - **JWT Token Security**: RSA encryption support, token refresh, expiry validation
-- **Rate Limiting**: IP-based request throttling with configurable limits
+- **Rate Limiting**: Revolutionary auto-fallback rate limiting with Redis → Database → Memory → File fallback chain, zero downtime, and transparent operation
 - **Input Validation**: Request data validation with custom rules
 - **CORS Support**: Cross-origin request handling
 - **Header Security**: Secure header management and validation
