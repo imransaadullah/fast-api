@@ -13,9 +13,9 @@ The FastAPI framework now includes a **revolutionary auto-fallback rate limiting
 
 ### **Intelligent Fallback Chain**
 ```
-Redis → Database → Memory → File
-  ↓        ↓        ↓       ↓
-Fastest → Fast → Medium → Reliable
+Redis → File
+  ↓       ↓
+Fastest → Reliable
 ```
 
 ### **Fail-Open Design**
@@ -38,19 +38,7 @@ Fastest → Fast → Medium → Reliable
 - **Fallback**: When Redis connection fails or becomes slow
 - **Requirements**: PHP Redis extension or Predis client
 
-#### 2. **Database Storage** (Second Priority)
-- **Performance**: Fast persistent storage
-- **Features**: Automatic table creation, cleanup, transaction support
-- **Fallback**: When database connection fails or becomes slow
-- **Requirements**: PDO extension, MySQL/PostgreSQL/SQLite
-
-#### 3. **Memory Storage** (Third Priority)
-- **Performance**: Fast in-memory storage with cleanup
-- **Features**: Memory usage monitoring, automatic garbage collection
-- **Fallback**: When memory becomes limited or corrupted
-- **Requirements**: PHP memory functions
-
-#### 4. **File Storage** (Final Fallback)
+#### 2. **File Storage** (Final Fallback)
 - **Performance**: Reliable but slower storage
 - **Features**: File locking, automatic directory creation
 - **Fallback**: Always available as last resort
@@ -82,12 +70,12 @@ $rateLimiter = RateLimiter::getInstance();
 $rateLimiter->configure([
     'max_requests' => 100,
     'time_window' => 60,
-    'storage_priority' => ['redis', 'database', 'memory', 'file']
+    'storage_priority' => ['redis', 'file']
 ]);
 
-// Custom storage priority (e.g., prefer database over Redis)
+// Custom storage priority (e.g., prefer file over Redis)
 $rateLimiter->configure([
-    'storage_priority' => ['database', 'redis', 'memory', 'file']
+    'storage_priority' => ['file', 'redis']
 ]);
 ```
 
@@ -122,14 +110,8 @@ REDIS_PASSWORD=your_password
 REDIS_DATABASE=0
 REDIS_TIMEOUT=1.0
 
-# Database Configuration
-DB_DRIVER=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_DATABASE=your_database
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
-DB_CHARSET=utf8mb4
+# File Storage Configuration (Optional)
+RATE_LIMIT_FILE_PATH=/tmp/rate_limits.json
 
 # Rate Limiting Configuration
 RATE_LIMIT_MAX=100
@@ -141,13 +123,13 @@ RATE_LIMIT_FILE=/path/to/rate_limit.json
 
 ```php
 // Default priority (fastest to most reliable)
-$defaultPriority = ['redis', 'database', 'memory', 'file'];
+$defaultPriority = ['redis', 'file'];
 
-// Custom priority (e.g., prefer database for compliance)
-$customPriority = ['database', 'redis', 'memory', 'file'];
+// Custom priority (e.g., prefer file for simplicity)
+$customPriority = ['file', 'redis'];
 
-// Development priority (e.g., prefer memory for testing)
-$devPriority = ['memory', 'file', 'database', 'redis'];
+// Development priority (e.g., prefer file for testing)
+$devPriority = ['file', 'redis'];
 ```
 
 ## 📊 Monitoring and Debugging
@@ -170,12 +152,12 @@ foreach ($status as $type => $info) {
 ### Performance Monitoring
 
 ```php
-// Get memory usage statistics
-$memoryStats = $rateLimiter->getMemoryStats();
-if ($memoryStats) {
-    echo "Memory usage: " . number_format($memoryStats['memory_usage'] / 1024, 2) . "KB\n";
-    echo "Total keys: " . $memoryStats['total_keys'] . "\n";
-    echo "Total timestamps: " . $memoryStats['total_timestamps'] . "\n";
+// Get file storage statistics
+$fileStats = $rateLimiter->getFileStats();
+if ($fileStats) {
+    echo "File size: " . number_format($fileStats['file_size'] / 1024, 2) . "KB\n";
+    echo "Total keys: " . $fileStats['total_keys'] . "\n";
+    echo "Last cleanup: " . $fileStats['last_cleanup'] . "\n";
 }
 
 // Test all storage backends
@@ -217,18 +199,6 @@ php -m | grep redis
 redis-cli ping
 ```
 
-#### Database Connection Failed
-```bash
-# Check database service
-sudo systemctl status mysql
-
-# Check PDO extension
-php -m | grep pdo
-
-# Test database connection
-mysql -u username -p database_name
-```
-
 #### File Storage Permission Issues
 ```bash
 # Check directory permissions
@@ -257,22 +227,13 @@ print_r($available);
 ### Scenario 1: Redis Failure
 ```
 1. System detects Redis is down
-2. Automatically switches to Database storage
+2. Automatically switches to File storage
 3. Continues operating normally
 4. Logs the fallback for monitoring
 5. Attempts Redis recovery in background
 ```
 
-### Scenario 2: Database Failure
-```
-1. System detects Database is down
-2. Automatically switches to Memory storage
-3. Continues operating normally
-4. Logs the fallback for monitoring
-5. Attempts Database recovery in background
-```
-
-### Scenario 3: Complete Storage Failure
+### Scenario 2: Complete Storage Failure
 ```
 1. All storage backends fail
 2. System allows requests to continue (fail-open)
@@ -288,8 +249,6 @@ print_r($available);
 | Storage | Speed | Persistence | Memory Usage | Network | Best For |
 |---------|-------|-------------|--------------|---------|----------|
 | Redis | ⚡⚡⚡ | ❌ | Low | Required | Production |
-| Database | ⚡⚡ | ✅ | Medium | Required | Compliance |
-| Memory | ⚡⚡⚡ | ❌ | High | ❌ | Development |
 | File | ⚡ | ✅ | Low | ❌ | Fallback |
 
 ### Performance Benchmarks
@@ -318,24 +277,14 @@ echo "Average: " . ($duration / $iterations) . "ms per request\n";
    - Configure Redis for persistence
    - Set up Redis clustering for high availability
 
-2. **Database as Secondary Storage**
-   - Use dedicated rate limiting database
-   - Implement proper indexing
-   - Set up database replication
-
-3. **Monitor Storage Health**
+2. **Monitor Storage Health**
    - Set up alerts for storage failures
    - Monitor fallback events
    - Track performance metrics
 
 ### Development Environment
 
-1. **Use Memory Storage for Testing**
-   - Fastest for development
-   - No external dependencies
-   - Easy to reset and debug
-
-2. **File Storage for Persistence**
+1. **Use File Storage for Development**
    - Good for development testing
    - No database setup required
    - Easy to inspect and modify
@@ -349,7 +298,6 @@ echo "Average: " . ($duration / $iterations) . "ms per request\n";
 
 2. **Storage Security**
    - Secure Redis connections
-   - Database access controls
    - File system permissions
 
 ## 🔮 Future Enhancements
@@ -363,7 +311,6 @@ echo "Average: " . ($duration / $iterations) . "ms per request\n";
 
 2. **Advanced Storage Backends**
    - MongoDB support
-   - Cassandra support
    - Cloud storage integration
 
 3. **Enhanced Monitoring**
@@ -406,8 +353,6 @@ $rateLimiter->registerStorage('custom', new CustomStorage());
 - `forceFallback(): void` - Force fallback to next storage
 - `testAllStorages(): array` - Test all storage backends
 - `cleanup(): void` - Clean up all storages
-- `getMemoryStats(): ?array` - Get memory statistics
-- `clearMemory(): void` - Clear memory storage
 
 ### StorageInterface
 

@@ -4,14 +4,14 @@ namespace FASTAPI\RateLimiter;
 
 /**
  * Main Rate Limiter class with automatic storage fallback
- * Automatically falls back between Redis → Database → Memory → File storage
+ * Automatically falls back between Redis → File storage
  */
 class RateLimiter
 {
     private static $instance = null;
     private $storages = [];
     private $activeStorage = null;
-    private $fallbackOrder = ['redis', 'database', 'memory', 'file'];
+    private $fallbackOrder = ['redis', 'file'];
     private $config = [];
 
     private function __construct()
@@ -41,14 +41,6 @@ class RateLimiter
             if (extension_loaded('redis') || class_exists('\Predis\Client')) {
                 $this->storages['redis'] = new RedisStorage();
             }
-
-            // Initialize Database storage
-            if (extension_loaded('pdo')) {
-                $this->storages['database'] = new DatabaseStorage();
-            }
-
-            // Initialize Memory storage
-            $this->storages['memory'] = new MemoryStorage();
 
             // Initialize File storage (always available as fallback)
             $this->storages['file'] = new FileStorage();
@@ -392,32 +384,4 @@ class RateLimiter
         }
     }
 
-    /**
-     * Get memory statistics (if using memory storage)
-     */
-    public function getMemoryStats(): ?array
-    {
-        if (isset($this->storages['memory'])) {
-            try {
-                return $this->storages['memory']->getMemoryStats();
-            } catch (\Exception $e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Clear all memory storage
-     */
-    public function clearMemory(): void
-    {
-        if (isset($this->storages['memory'])) {
-            try {
-                $this->storages['memory']->clearAll();
-            } catch (\Exception $e) {
-                error_log("Failed to clear memory storage: " . $e->getMessage());
-            }
-        }
-    }
 }
