@@ -38,7 +38,9 @@ class RedisStorage implements StorageInterface
             if (!$this->redis) {
                 return false;
             }
-            return $this->redis->ping() === '+PONG';
+            $ping = $this->redis->ping();
+            // Redis ping may return '+PONG', 'PONG', integer 1, boolean true depending on version/build
+            return $ping === '+PONG' || $ping === 'PONG' || $ping === 1 || $ping === true || $ping === '1';
         } catch (\Exception $e) {
             return false;
         }
@@ -66,8 +68,8 @@ class RedisStorage implements StorageInterface
                 $this->redis->auth($_ENV['REDIS_PASSWORD']);
             }
 
-            if ($this->connected && isset($_ENV['REDIS_DATABASE'])) {
-                $this->redis->select($_ENV['REDIS_DATABASE']);
+            if ($this->connected && isset($_ENV['REDIS_DB'])) {
+                $this->redis->select($_ENV['REDIS_DB']);
             }
 
         } catch (\Exception $e) {
