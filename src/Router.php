@@ -231,9 +231,11 @@ class Router
             $routeUri = isset($route['_final_uri']) ? $route['_final_uri'] : $route['uri'];
             $pattern = $this->convertPatternToRegex($routeUri);
             
+            // Match against PATH only (ignore query string) for better compatibility
+            $requestPath = parse_url($request->getUri(), PHP_URL_PATH);
             if (
                 $route['method'] === $request->getMethod()
-                && preg_match($pattern, $request->getUri(), $matches)
+                && preg_match($pattern, $requestPath, $matches)
             ) {
                 array_shift($matches); // Remove the full match
                 
@@ -629,7 +631,8 @@ class Router
         $pattern = preg_replace('/:([\w-]+)/', '([^\/]+)', $pattern);        // :param
         $pattern = preg_replace('/\\\\{([\w-]+)\\\\}/', '([^\/]+)', $pattern); // {param}
         
-        return "/^{$pattern}$/";
+        // Allow optional trailing slash for easier adoption
+        return "/^{$pattern}\\/?$/";
     }
 
     /**
