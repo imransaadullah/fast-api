@@ -163,8 +163,10 @@ class FileStorage implements StorageInterface
                 return true;
             }
 
-            // Increment count
-            return $this->incrementCount($key, $timeWindow);
+            // Increment count but do NOT treat success as limited
+            // Under the limit → increment usage and allow request
+            $this->incrementCount($key, $timeWindow);
+            return false;
         } catch (\Exception $e) {
             error_log("File storage isLimited failed: " . $e->getMessage());
             return false;
