@@ -58,7 +58,6 @@ class RateLimiter
         foreach ($this->fallbackOrder as $storageType) {
             if (isset($this->storages[$storageType]) && $this->storages[$storageType]->isAvailable()) {
                 $this->activeStorage = $storageType;
-                error_log("Rate limiter using {$storageType} storage");
                 break;
             }
         }
@@ -66,7 +65,7 @@ class RateLimiter
         if ($this->activeStorage === null) {
             // Fallback to file storage if nothing else works
             $this->activeStorage = 'file';
-            error_log("Rate limiter falling back to file storage");
+            // Do not log on successful selection; logging reserved for failures
         }
     }
 
@@ -126,7 +125,6 @@ class RateLimiter
                     if ($result !== null) {
                         // Switch to this working storage
                         $this->activeStorage = $storageType;
-                        error_log("Rate limiter switched to {$storageType} storage");
                         return $result;
                     }
                 } catch (\Exception $e) {
@@ -144,7 +142,7 @@ class RateLimiter
     /**
      * Get current count for a key
      */
-    public function getCurrentCount(string $key, int $timeWindow = null): int
+    public function getCurrentCount(string $key, ?int $timeWindow = null): int
     {
         $timeWindow = $timeWindow ?? $this->config['time_window'] ?? 60;
 
@@ -201,7 +199,7 @@ class RateLimiter
     /**
      * Get rate limit information
      */
-    public function getInfo(string $key, int $timeWindow = null): array
+    public function getInfo(string $key, ?int $timeWindow = null): array
     {
         $timeWindow = $timeWindow ?? $this->config['time_window'] ?? 60;
 
@@ -332,7 +330,6 @@ class RateLimiter
                     
                     // If we get here, storage is working
                     $this->activeStorage = $storageType;
-                    error_log("Rate limiter forced fallback to {$storageType}");
                     return;
                 } catch (\Exception $e) {
                     error_log("Storage {$storageType} failed during forced fallback: " . $e->getMessage());
