@@ -2,32 +2,35 @@
 
 ## Overview
 
-FastAPI provides two distinct middleware systems that work together to handle request processing:
+FastAPI provides three distinct middleware systems that work together to handle request processing:
 
 1. **App-Level Middleware** - Global middleware that runs on every request
 2. **Router-Level Middleware** - Route-specific middleware with aliasing support
+3. **Fluent Middleware API** - Method chaining for individual route middleware
 
 ## Table of Contents
 
-- [App vs Router Middleware](#app-vs-router-middleware)
+- [App vs Router vs Fluent Middleware](#app-vs-router-vs-fluent-middleware)
 - [App-Level Middleware](#app-level-middleware)
 - [Router-Level Middleware](#router-level-middleware)
+- [Fluent Middleware API](#fluent-middleware-api)
 - [Middleware Aliasing](#middleware-aliasing)
 - [Execution Order](#execution-order)
 - [Best Practices](#best-practices)
 - [Common Patterns](#common-patterns)
 - [Troubleshooting](#troubleshooting)
 
-## App vs Router Middleware
+## App vs Router vs Fluent Middleware
 
-| Feature | App-Level | Router-Level |
-|---------|-----------|--------------|
-| **Scope** | Global (every request) | Route-specific |
-| **Aliasing** | ❌ No | ✅ Yes |
-| **Auto-resolution** | ❌ No | ✅ Yes |
-| **Registration** | `addMiddleware()`, `use()` | `registerMiddleware()` |
-| **Usage** | Direct instances/closures | String aliases |
-| **Execution** | Before route matching | After route matching |
+| Feature | App-Level | Router-Level | Fluent API |
+|---------|-----------|--------------|------------|
+| **Scope** | Global (every request) | Route-specific | Individual routes |
+| **Aliasing** | ❌ No | ✅ Yes | ✅ Yes |
+| **Auto-resolution** | ❌ No | ✅ Yes | ✅ Yes |
+| **Registration** | `addMiddleware()`, `use()` | `registerMiddleware()` | `route()->middleware()` |
+| **Usage** | Direct instances/closures | String aliases | Method chaining |
+| **Execution** | Before route matching | After route matching | After route matching |
+| **Method Chaining** | ❌ No | ❌ No | ✅ Yes |
 
 ## App-Level Middleware
 
@@ -190,6 +193,135 @@ $app->router->group(['middleware' => ['role:admin']], function($app) {
 $app->router->group(['middleware' => ['role:user']], function($app) {
     // RoleMiddleware will receive 'user' as parameter
 });
+```
+
+## Fluent Middleware API
+
+### Purpose
+The Fluent Middleware API provides method chaining for individual route middleware. Use this for:
+- Clean, readable route definitions
+- Individual route-specific middleware
+- Method chaining syntax
+- Route naming and constraints
+
+### Basic Usage
+
+#### `route($method, $uri, $handler)`
+```php
+$app = App::getInstance();
+
+// Create a fluent route builder
+$app->route('GET', '/users', 'UserController@index')
+    ->middleware(['auth', 'throttle'])
+    ->name('users.index');
+
+$app->route('POST', '/users', 'UserController@store')
+    ->middleware(['auth', 'role:admin'])
+    ->name('users.store');
+```
+
+### Method Chaining
+
+#### `middleware($middleware)`
+```php
+// Single middleware
+$app->route('GET', '/profile', 'UserController@profile')
+    ->middleware('auth');
+
+// Multiple middleware
+$app->route('POST', '/admin/users', 'AdminController@createUser')
+    ->middleware(['auth', 'role:admin', 'throttle']);
+
+// Mixed middleware types
+$app->route('PUT', '/users/{id}', 'UserController@update')
+    ->middleware([
+        'auth',
+        new CustomMiddleware(),
+        $rbac->withPermissions('users.update')
+    ]);
+```
+
+#### `name($name)`
+```php
+$app->route('GET', '/users/{id}', 'UserController@show')
+    ->middleware(['auth'])
+    ->name('users.show');
+```
+
+#### `where($constraints)`
+```php
+$app->route('GET', '/users/{id}', 'UserController@show')
+    ->middleware(['auth'])
+    ->name('users.show')
+    ->where(['id' => '\d+']);
+```
+
+### Advanced Examples
+
+#### RBAC Integration
+```php
+$rbac = new RBAC();
+
+$app->route('GET', '/claims', 'ClaimsController@index')
+    ->middleware($rbac->withPermissions('claims.read'));
+
+$app->route('POST', '/claims/{id}', 'ClaimsController@update')
+    ->middleware($rbac->withPermissions('claims.update'));
+```
+
+#### Group + Fluent Hybrid
+```php
+$app->group(['prefix' => '/api/v1', 'middleware' => ['auth']], function($app) {
+    // Group middleware applies to all routes
+    
+    $app->route('GET', '/dashboard', 'DashboardController@index')
+        ->middleware($rbac->withPermissions('dashboard.view'));
+    
+    $app->route('POST', '/dashboard/settings', 'DashboardController@updateSettings')
+        ->middleware($rbac->withPermissions('dashboard.settings'));
+});
+```
+
+#### Complex Middleware Chain
+```php
+$app->route('POST', '/api/upload', 'UploadController@store')
+    ->middleware([
+        'auth',
+        'throttle:10,60', // 10 requests per minute
+        $rbac->withPermissions('files.upload'),
+        new FileSizeMiddleware(1024 * 1024) // 1MB limit
+    ])
+    ->name('upload.store')
+    ->where(['file' => '\.(jpg|png|pdf)$']);
+```
+
+### RouteBuilder Class
+
+The Fluent API is powered by the `RouteBuilder` class:
+
+```php
+use FASTAPI\RouteBuilder;
+
+// Direct usage
+$builder = new RouteBuilder($router, 'GET', '/users', 'UserController@index');
+$builder->middleware(['auth'])
+        ->name('users.index')
+        ->build();
+```
+
+### Automatic Building
+
+Routes are automatically built when the `RouteBuilder` object is destroyed:
+
+```php
+// This automatically builds the route
+$app->route('GET', '/users', 'UserController@index')
+    ->middleware(['auth']);
+
+// Or explicitly build
+$app->route('GET', '/users', 'UserController@index')
+    ->middleware(['auth'])
+    ->build();
 ```
 
 ## Middleware Aliasing

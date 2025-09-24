@@ -1,12 +1,13 @@
 # Route Groups Guide
 
-Route Groups are a powerful feature in FastAPI that allows you to organize routes with common attributes like prefixes, middleware, and namespaces. This guide covers both App-level and Router-level route grouping.
+Route Groups are a powerful feature in FastAPI that allows you to organize routes with common attributes like prefixes, middleware, and namespaces. This guide covers App-level, Router-level route grouping, and the new Fluent API integration.
 
 ## 📋 Table of Contents
 
 - [Overview](#overview)
 - [App-Level Route Groups](#app-level-route-groups)
 - [Router-Level Route Groups](#router-level-route-groups)
+- [Fluent API Integration](#fluent-api-integration)
 - [Group Attributes](#group-attributes)
 - [Nested Groups](#nested-groups)
 - [Middleware in Groups](#middleware-in-groups)
@@ -23,6 +24,7 @@ Route Groups provide:
 - **Namespace Organization**: Organize controllers by namespace
 - **Code Organization**: Keep related routes together
 - **Inheritance**: Nested groups inherit parent attributes
+- **Fluent Integration**: Combine group-based and fluent middleware approaches
 
 ## 🏗 App-Level Route Groups
 
@@ -148,6 +150,107 @@ $router->group([
 // POST /api/v2/products → App\Controllers\ProductController@store
 // etc.
 ```
+
+## 🚀 Fluent API Integration
+
+### Overview
+The Fluent API can be seamlessly integrated with route groups, providing the best of both worlds: group-based organization with individual route middleware control.
+
+### Basic Integration
+
+#### Group + Fluent Middleware
+```php
+$app = App::getInstance();
+
+// Group provides prefix and base middleware
+$app->group(['prefix' => '/api/v1', 'middleware' => ['auth']], function($app) {
+    // Individual routes can add specific middleware
+    $app->route('GET', '/users', 'UserController@index')
+        ->middleware(['throttle:100,60']); // Additional middleware
+    
+    $app->route('POST', '/users', 'UserController@store')
+        ->middleware(['role:admin']); // Different middleware
+});
+
+// Results in:
+// GET /api/v1/users (auth + throttle middleware)
+// POST /api/v1/users (auth + role:admin middleware)
+```
+
+#### Your Desired Syntax
+```php
+$rbac = new RBAC();
+
+$app->group(['prefix' => '/v2/facilities/{facility_id}', 'middleware' => ['auth']], function($app) use ($rbac) {
+    $app->route('GET', '/claims', 'ClaimsController@index')
+        ->middleware($rbac->withPermissions('claims.read'));
+    
+    $app->route('POST', '/claims/{id}', 'ClaimsController@update')
+        ->middleware($rbac->withPermissions('claims.update'));
+});
+```
+
+### Advanced Integration Patterns
+
+#### Nested Groups with Fluent API
+```php
+$app->group(['prefix' => '/api/v1'], function($app) {
+    // Public routes
+    $app->get('/status', 'StatusController@index');
+    
+    // Protected routes
+    $app->group(['middleware' => ['auth']], function($app) {
+        $app->route('GET', '/profile', 'UserController@profile')
+            ->middleware(['throttle:60,60']); // Rate limited
+        
+        // Admin routes
+        $app->group(['middleware' => ['role:admin']], function($app) {
+            $app->route('GET', '/admin/users', 'AdminController@users')
+                ->middleware(['audit:user_access']); // Audit logging
+        });
+    });
+});
+```
+
+#### Mixed Approaches
+```php
+$app->group(['prefix' => '/api/v1'], function($app) {
+    // Traditional group-based routes
+    $app->group(['middleware' => ['auth']], function($app) {
+        $app->get('/dashboard', 'DashboardController@index');
+        $app->post('/settings', 'SettingsController@update');
+    });
+    
+    // Fluent API routes
+    $app->route('GET', '/reports', 'ReportController@index')
+        ->middleware(['auth', 'role:manager'])
+        ->name('reports.index');
+    
+    $app->route('POST', '/reports', 'ReportController@generate')
+        ->middleware(['auth', 'role:manager', 'throttle:5,60'])
+        ->name('reports.generate');
+});
+```
+
+### Benefits of Integration
+
+1. **Flexibility**: Use groups for common attributes, fluent API for specific middleware
+2. **Readability**: Clear separation of concerns
+3. **Maintainability**: Easy to modify individual route middleware
+4. **Backward Compatibility**: Existing group-based code continues to work
+
+### Best Practices
+
+#### Use Groups For:
+- Common prefixes (`/api/v1`, `/admin`)
+- Base middleware that applies to all routes (`auth`, `cors`)
+- Namespace organization
+
+#### Use Fluent API For:
+- Route-specific middleware
+- Complex middleware chains
+- Route naming and constraints
+- RBAC integration
 
 ## 📋 Group Attributes
 

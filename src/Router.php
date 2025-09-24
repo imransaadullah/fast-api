@@ -4,6 +4,7 @@ namespace FASTAPI;
 use FASTAPI\Request;
 use FASTAPI\Response;
 use FASTAPI\Middlewares\MiddlewareInterface;
+use FASTAPI\RouteBuilder;
 
 /**
  * The Router class is responsible for routing HTTP requests to appropriate handlers based on the requested URI and method.
@@ -103,9 +104,25 @@ class Router
      */
     public function addRoute($method, $uri, $handler)
     {
+        $this->addRouteWithMiddleware($method, $uri, $handler, [], null, []);
+    }
+
+    /**
+     * Add route with middleware support (enhanced version)
+     *
+     * @param string $method
+     * @param string $uri
+     * @param mixed $handler
+     * @param array $middleware
+     * @param string|null $name
+     * @param array $constraints
+     * @return void
+     */
+    public function addRouteWithMiddleware($method, $uri, $handler, $middleware = [], $name = null, $constraints = [])
+    {
         // Apply current group context
         $finalUri = $this->applyGroupPrefix($uri);
-        $finalMiddleware = $this->getCurrentMiddleware();
+        $finalMiddleware = array_merge($this->getCurrentMiddleware(), $middleware);
         
         // BACKWARD COMPATIBLE: Maintain original structure + add new fields
         $this->routes[] = [
@@ -116,7 +133,9 @@ class Router
             '_final_uri' => $finalUri,        // Internal: final URI with prefixes
             '_middleware' => $finalMiddleware, // Internal: middleware stack
             '_group' => $this->currentGroup,  // Internal: group context
-            '_original_uri' => $uri          // Internal: original URI (redundant but clear)
+            '_original_uri' => $uri,          // Internal: original URI (redundant but clear)
+            '_name' => $name,                 // Internal: route name
+            '_constraints' => $constraints    // Internal: route constraints
         ];
     }
     
@@ -212,6 +231,19 @@ class Router
     public function options($uri, $handler)
     {
         $this->addRoute('OPTIONS', $uri, $handler);
+    }
+
+    /**
+     * Create a fluent route builder
+     *
+     * @param string $method
+     * @param string $uri
+     * @param mixed $handler
+     * @return RouteBuilder
+     */
+    public function route($method, $uri, $handler)
+    {
+        return new RouteBuilder($this, $method, $uri, $handler);
     }
 
     /**

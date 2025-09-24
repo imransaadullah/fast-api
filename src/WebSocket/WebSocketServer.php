@@ -59,7 +59,7 @@ class WebSocketServer
      * @param App|null $app The App instance to use.
      * @return WebSocketServer The singleton instance.
      */
-    public static function getInstance(App $app = null)
+    public static function getInstance(?App $app = null)
     {
         if (self::$instance === null) {
             self::$instance = new self($app);

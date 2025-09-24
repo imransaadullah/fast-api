@@ -6,6 +6,7 @@ use FASTAPI\Middlewares\MiddlewareInterface;
 use FASTAPI\Router as Router;
 use FASTAPI\Request as Request;
 use FASTAPI\RateLimiter\RateLimiter as RateLimiter;
+use FASTAPI\RouteBuilder;
 
 /**
  * The App class represents the main application that handles incoming HTTP requests and routes them to appropriate handlers.
@@ -302,6 +303,19 @@ class App
     {
         $this->router->group($attributes, $callback);
         return $this;
+    }
+
+    /**
+     * Create a fluent route builder
+     *
+     * @param string $method
+     * @param string $uri
+     * @param mixed $handler
+     * @return RouteBuilder
+     */
+    public function route($method, $uri, $handler)
+    {
+        return $this->router->route($method, $uri, $handler);
     }
 
     /**

@@ -6,6 +6,7 @@ Complete API reference for all FastAPI classes, methods, and properties.
 
 - [App Class](#app-class)
 - [Router Class](#router-class)
+- [RouteBuilder Class](#routebuilder-class)
 - [Request Class](#request-class)
 - [Response Class](#response-class)
 - [Token Class](#token-class)
@@ -107,6 +108,22 @@ Create a WebSocket server instance.
 
 ```php
 $websocket = $app->websocket(8080, 'localhost');
+```
+
+#### `route(string $method, string $uri, mixed $handler): RouteBuilder`
+Create a fluent route builder for method chaining.
+
+**Parameters:**
+- `$method` (string) - HTTP method (GET, POST, PUT, DELETE, etc.)
+- `$uri` (string) - Route URI pattern
+- `$handler` (mixed) - Route handler (string, callable, or array)
+
+**Returns:** `RouteBuilder` - Fluent route builder instance
+
+```php
+$app->route('GET', '/users', 'UserController@index')
+    ->middleware(['auth'])
+    ->name('users.index');
 ```
 
 #### `addMiddleware(callable $middleware): App`
@@ -242,6 +259,90 @@ Get all registered routes.
 Get routes with group information.
 
 **Returns:** `array` - Array of compiled routes
+
+#### `route(string $method, string $uri, mixed $handler): RouteBuilder`
+Create a fluent route builder.
+
+**Parameters:**
+- `$method` (string) - HTTP method
+- `$uri` (string) - Route URI
+- `$handler` (mixed) - Route handler
+
+**Returns:** `RouteBuilder` - Fluent route builder
+
+#### `addRouteWithMiddleware(string $method, string $uri, mixed $handler, array $middleware = [], string $name = null, array $constraints = []): void`
+Add route with middleware support.
+
+**Parameters:**
+- `$method` (string) - HTTP method
+- `$uri` (string) - Route URI
+- `$handler` (mixed) - Route handler
+- `$middleware` (array) - Middleware array
+- `$name` (string|null) - Route name
+- `$constraints` (array) - Route constraints
+
+## RouteBuilder Class
+
+Fluent API for route definition with method chaining.
+
+### Methods
+
+#### `middleware(mixed $middleware): RouteBuilder`
+Add middleware to the route.
+
+**Parameters:**
+- `$middleware` (mixed) - Single middleware or array of middleware
+
+**Returns:** `RouteBuilder` - For method chaining
+
+```php
+$app->route('GET', '/users', 'UserController@index')
+    ->middleware(['auth', 'throttle']);
+```
+
+#### `name(string $name): RouteBuilder`
+Set route name for URL generation.
+
+**Parameters:**
+- `$name` (string) - Route name
+
+**Returns:** `RouteBuilder` - For method chaining
+
+```php
+$app->route('GET', '/users/{id}', 'UserController@show')
+    ->name('users.show');
+```
+
+#### `where(array $constraints): RouteBuilder`
+Set route parameter constraints.
+
+**Parameters:**
+- `$constraints` (array) - Parameter constraints
+
+**Returns:** `RouteBuilder` - For method chaining
+
+```php
+$app->route('GET', '/users/{id}', 'UserController@show')
+    ->where(['id' => '\d+']);
+```
+
+#### `build(): void`
+Build and register the route.
+
+```php
+$builder = $app->route('GET', '/users', 'UserController@index');
+$builder->middleware(['auth'])->build();
+```
+
+#### `getRouter(): Router`
+Get the router instance.
+
+**Returns:** `Router` - Router instance
+
+#### `getRouteInfo(): array`
+Get route information.
+
+**Returns:** `array` - Route information
 
 ## Request Class
 

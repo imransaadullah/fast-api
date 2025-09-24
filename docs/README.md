@@ -8,6 +8,7 @@ Welcome to the comprehensive documentation for the FastAPI Framework. This docum
 - **[Getting Started](getting-started.md)** - Quick start guide and basic setup
 - **[App Class Guide](app-class.md)** - Application lifecycle and singleton pattern
 - **[Router Class Guide](router-class.md)** - Advanced routing with groups and middleware
+- **[Fluent API Guide](fluent-api-guide.md)** - Method chaining for route definition with middleware
 - **[Request/Response Guide](request-response.md)** - HTTP request and response handling
 
 ### 🔧 Middleware System
