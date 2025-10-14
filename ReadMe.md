@@ -12,7 +12,8 @@ FastAPI is a lightweight, powerful PHP framework designed to make building APIs 
 - **Custom Time Utilities**: Advanced date/time manipulation and formatting
 - **String & Array Utilities**: Comprehensive utility methods for common operations
 - **Rate Limiting**: Revolutionary auto-fallback rate limiting with Redis → File fallback chain
-- **WebSocket Support**: Real-time WebSocket server with broadcasting capabilities
+- **WebSocket Support**: Real-time WebSocket server with broadcasting and event queue capabilities
+- **Event Queue System**: Queue WebSocket events from your API for real-time notifications
 - **100% Backward Compatible**: All new features preserve existing functionality
 - **Type Safety**: Proper error handling and validation throughout
 - **Singleton App Pattern**: Efficient application lifecycle management
@@ -112,6 +113,59 @@ $websocket = $app->websocket()
         // Handle real-time data
     });
 ```
+
+#### Event Queue - Queue Events from Your API
+
+Queue events from your regular API endpoints to broadcast to WebSocket clients without maintaining persistent connections:
+
+```php
+// WebSocket Server (runs continuously)
+use FASTAPI\WebSocket\WebSocketServer;
+
+$server = WebSocketServer::getInstance($app)
+    ->host('0.0.0.0')
+    ->port(8081)
+    ->eventQueue(__DIR__ . '/logs/ws_queue'); // Enable event queue
+
+$server->on('/notifications', function($conn) {
+    echo "New connection\n";
+});
+
+$server->start();
+```
+
+```php
+// API Endpoint (your regular API)
+use FASTAPI\WebSocket\WebSocketServer;
+
+$app->post('/api/appointments', function($request) {
+    $response = new Response();
+    
+    // Save appointment to database
+    $appointmentId = saveAppointment($request->body());
+    
+    // Queue WebSocket event - broadcasts to all connected clients
+    WebSocketServer::queueEvent(
+        __DIR__ . '/logs/ws_queue',
+        'appointment_created',
+        [
+            'appointment_id' => $appointmentId,
+            'patient' => $request->body()['patient_name'],
+            'time' => $request->body()['time']
+        ]
+    );
+    
+    return $response->setJsonResponse(['success' => true]);
+});
+```
+
+**How it works:**
+1. Your API queues events to a directory
+2. WebSocket server monitors and processes the queue
+3. Events are broadcast to all connected clients
+4. Processed events are automatically cleaned up
+
+See [WebSocket Event Queue Documentation](docs/websocket-event-queue.md) for details.
 
 #### Broadcasting Messages
 
@@ -488,11 +542,13 @@ $websocket->start();
 
 **WebSocket Features:**
 - **Real-time Communication**: Full WebSocket protocol support
+- **Event Queue System**: Queue events from your API for real-time broadcasts
 - **Broadcasting**: Send messages to all connected clients
 - **Authentication**: Secure WebSocket connections with tokens
 - **Multiple Servers**: Run multiple WebSocket servers on different ports
 - **Event-based**: JSON-based event system for structured communication
 - **Fluent API**: Chainable methods for easy configuration
+- **No External Dependencies**: Pure PHP implementation
 
 ### 3. Request Class - HTTP Request Handling
 

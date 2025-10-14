@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Event Queue Test Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        button.primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        button.primary:hover {
+            background: #5568d3;
+        }
+        
+        button.danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        button.danger:hover {
+            background: #c82333;
+        }
+        
+        button.secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .messages {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .message {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            background: white;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .message-time {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        .message-event {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .message-payload {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .api-triggers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .api-trigger {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .api-trigger h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .api-trigger button {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WebSocket Event Queue Test Client</h1>
+        <p class="subtitle">Test your FastAPI WebSocket server with event queue</p>
+        
+        <div id="status" class="status disconnected">
+            ⚫ Disconnected
+        </div>
+        
+        <div class="controls">
+            <input type="text" id="wsUrl" value="ws://localhost:8081/appointments" placeholder="WebSocket URL">
+            <button id="connectBtn" class="primary">Connect</button>
+            <button id="disconnectBtn" class="danger" disabled>Disconnect</button>
+            <button id="clearBtn" class="secondary">Clear Messages</button>
+        </div>
+        
+        <div class="api-triggers">
+            <div class="api-trigger">
+                <h3>📅 Create Appointment</h3>
+                <button class="primary" onclick="triggerAPI('/api/appointments', 'POST', {
+                    patient_name: 'John Doe',
+                    doctor_name: 'Dr. Smith',
+                    appointment_time: '2025-10-15 14:00:00'
+                })">Create</button>
+            </div>
+            
+            <div class="api-trigger">
+                <h3>🔄 Update Status</h3>
+                <button class="primary" onclick="triggerAPI('/api/appointments/123/status', 'PUT', {
+                    status: 'confirmed'
+                })">Update</button>
+            </div>
+            
+            <div class="api-trigger">
+                <h3>🗑️ Delete Appointment</h3>
+                <button class="danger" onclick="triggerAPI('/api/appointments/123', 'DELETE')">Delete</button>
+            </div>
+            
+            <div class="api-trigger">
+                <h3>🔔 Send Notification</h3>
+                <button class="primary" onclick="triggerAPI('/api/notifications', 'POST', {
+                    type: 'info',
+                    title: 'Test Notification',
+                    message: 'This is a test notification!'
+                })">Send</button>
+            </div>
+            
+            <div class="api-trigger">
+                <h3>📢 Custom Broadcast</h3>
+                <button class="primary" onclick="triggerAPI('/api/broadcast', 'POST', {
+                    event: 'custom_event',
+                    payload: { test: 'data', timestamp: Date.now() }
+                })">Broadcast</button>
+            </div>
+        </div>
+        
+        <div class="messages" id="messages">
+            <p style="color: #999; text-align: center;">No messages yet. Connect to WebSocket to start receiving events.</p>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        const wsUrl = document.getElementById('wsUrl');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
+        const apiBaseUrl = 'http://localhost:8080'; // Change if your API runs on different port
+        
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        clearBtn.addEventListener('click', clearMessages);
+        
+        function connect() {
+            if (ws) return;
+            
+            ws = new WebSocket(wsUrl.value);
+            
+            ws.onopen = () => {
+                updateStatus(true);
+                addMessage('system', 'Connected to WebSocket server', {});
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage(data.event, 'Received event', data.payload);
+                } catch (e) {
+                    addMessage('error', 'Failed to parse message', { raw: event.data });
+                }
+            };
+            
+            ws.onerror = (error) => {
+                addMessage('error', 'WebSocket error', { error: error.toString() });
+            };
+            
+            ws.onclose = () => {
+                updateStatus(false);
+                addMessage('system', 'Disconnected from WebSocket server', {});
+                ws = null;
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function updateStatus(connected) {
+            if (connected) {
+                status.className = 'status connected';
+                status.textContent = '🟢 Connected to ' + wsUrl.value;
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                status.className = 'status disconnected';
+                status.textContent = '⚫ Disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+        
+        function addMessage(event, description, payload) {
+            if (messages.querySelector('p')) {
+                messages.innerHTML = '';
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            
+            const time = new Date().toLocaleTimeString();
+            
+            messageDiv.innerHTML = `
+                <div class="message-time">${time}</div>
+                <div class="message-event">${event}</div>
+                <div class="message-payload">${JSON.stringify(payload, null, 2)}</div>
+            `;
+            
+            messages.insertBefore(messageDiv, messages.firstChild);
+            
+            // Keep only last 50 messages
+            while (messages.children.length > 50) {
+                messages.removeChild(messages.lastChild);
+            }
+        }
+        
+        function clearMessages() {
+            messages.innerHTML = '<p style="color: #999; text-align: center;">Messages cleared.</p>';
+        }
+        
+        async function triggerAPI(endpoint, method, body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(apiBaseUrl + endpoint, options);
+                const data = await response.json();
+                
+                addMessage('api_call', `API ${method} ${endpoint}`, {
+                    status: response.status,
+                    response: data
+                });
+                
+                // Show success message
+                if (data.success) {
+                    alert('✅ API call successful! Check WebSocket messages for broadcast.');
+                } else {
+                    alert('⚠️ API call failed: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error calling API: ' + error.message);
+                addMessage('error', 'API call failed', { error: error.message });
+            }
+        }
+    </script>
+</body>
+</html>
+

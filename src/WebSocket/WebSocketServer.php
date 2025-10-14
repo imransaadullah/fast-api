@@ -34,6 +34,12 @@ class WebSocketServer
     
     /** @var resource|\Socket|null */
     private $socket = null;
+    
+    /** @var string|null */
+    private $queuePath = null;
+    
+    /** @var int */
+    private $lastQueueCheck = 0;
 
     private function __construct(?App $app = null)
     {
@@ -102,6 +108,24 @@ class WebSocketServer
     public function host($host)
     {
         $this->host = $host;
+        return $this;
+    }
+
+    /**
+     * Set the event queue path for external message queueing
+     *
+     * @param string $path Directory path for queue files
+     * @return WebSocketServer
+     */
+    public function eventQueue($path)
+    {
+        $this->queuePath = rtrim($path, '/\\');
+        
+        // Create queue directory if it doesn't exist
+        if (!is_dir($this->queuePath)) {
+            mkdir($this->queuePath, 0755, true);
+        }
+        
         return $this;
     }
 
@@ -181,6 +205,9 @@ class WebSocketServer
             
             // Handle existing connections
             $this->handleExistingConnections();
+            
+            // Process event queue if configured
+            $this->processEventQueue();
             
             usleep(10000); // 10ms delay to prevent CPU overuse
         }
@@ -288,5 +315,103 @@ class WebSocketServer
     public function getConnections()
     {
         return $this->connections;
+    }
+
+    /**
+     * Process queued events from the event queue directory
+     *
+     * @return void
+     */
+    private function processEventQueue()
+    {
+        if (!$this->queuePath || !is_dir($this->queuePath)) {
+            return;
+        }
+
+        // Check queue every 100ms to reduce file system overhead
+        $now = microtime(true);
+        if ($now - $this->lastQueueCheck < 0.1) {
+            return;
+        }
+        
+        $this->lastQueueCheck = $now;
+
+        // Get all queue files (*.json)
+        $queueFiles = glob($this->queuePath . '/*.json');
+        
+        if (!$queueFiles) {
+            return;
+        }
+
+        foreach ($queueFiles as $file) {
+            try {
+                // Read the event data
+                $content = @file_get_contents($file);
+                
+                if ($content === false) {
+                    continue;
+                }
+
+                $eventData = json_decode($content, true);
+                
+                if (!$eventData || !isset($eventData['event'])) {
+                    // Invalid event data, remove file
+                    @unlink($file);
+                    continue;
+                }
+
+                // Broadcast the event
+                $this->broadcast(
+                    $eventData['event'],
+                    $eventData['payload'] ?? null
+                );
+
+                // Remove processed file
+                @unlink($file);
+
+            } catch (\Exception $e) {
+                // Log error and remove problematic file
+                error_log("WebSocket queue processing error: " . $e->getMessage());
+                @unlink($file);
+            }
+        }
+    }
+
+    /**
+     * Queue an event to be broadcast (for external scripts)
+     * This is a static helper method that can be called from anywhere
+     *
+     * @param string $queuePath Directory path for queue files
+     * @param string $event Event name
+     * @param mixed $payload Event payload
+     * @return bool Success status
+     */
+    public static function queueEvent($queuePath, $event, $payload = null)
+    {
+        $queuePath = rtrim($queuePath, '/\\');
+        
+        // Create queue directory if it doesn't exist
+        if (!is_dir($queuePath)) {
+            @mkdir($queuePath, 0755, true);
+        }
+
+        if (!is_dir($queuePath) || !is_writable($queuePath)) {
+            return false;
+        }
+
+        $eventData = [
+            'event' => $event,
+            'payload' => $payload,
+            'timestamp' => time(),
+            'queued_at' => microtime(true)
+        ];
+
+        // Generate unique filename with timestamp and random suffix
+        $filename = $queuePath . '/' . microtime(true) . '_' . uniqid() . '.json';
+
+        // Write event to queue file
+        $result = @file_put_contents($filename, json_encode($eventData));
+
+        return $result !== false;
     }
 } 
