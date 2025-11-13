@@ -250,8 +250,7 @@ class Request
      */
     public function getQueryParam($key)
     {
-        $queryParams = [];
-        parse_str(parse_url($this->uri, PHP_URL_QUERY), $queryParams);
+        $queryParams = $this->getQueryParams();
         return $queryParams[$key] ?? null;
     }
 
@@ -264,5 +263,23 @@ class Request
     {
         $json = file_get_contents('php://input');
         return json_decode($json, true) ?? null;
+    }
+
+    /**
+     * Retrieves all query parameters from the URI.
+     *
+     * @return array An associative array of query parameters.
+     */
+    public function getQueryParams(): array
+    {
+        $query = parse_url($this->uri, PHP_URL_QUERY);
+
+        if ($query === null || $query === false || $query === '') {
+            return [];
+        }
+
+        parse_str($query, $queryParams);
+
+        return $queryParams;
     }
 }
