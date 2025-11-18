@@ -270,6 +270,16 @@ class Router
                 && preg_match($pattern, $requestPath, $matches)
             ) {
                 array_shift($matches); // Remove the full match
+
+                // Map matched values to parameter names and store on the request
+                $paramNames = $this->extractRouteParameterNames($routeUri);
+                $pathParams = [];
+                foreach ($paramNames as $index => $name) {
+                    if (isset($matches[$index])) {
+                        $pathParams[$name] = $matches[$index];
+                    }
+                }
+                $request->setPathParams($pathParams);
                 
                 // BACKWARD COMPATIBLE: Use middleware if available, otherwise empty array
                 $middleware = isset($route['_middleware']) ? $route['_middleware'] : [];
@@ -665,6 +675,27 @@ class Router
         
         // Allow optional trailing slash for easier adoption
         return "/^{$pattern}\\/?$/";
+    }
+
+    /**
+     * Extracts parameter names from a route pattern.
+     *
+     * @param string $pattern
+     * @return array
+     */
+    private function extractRouteParameterNames($pattern): array
+    {
+        $names = [];
+
+        if (preg_match_all('/:([\w-]+)/', $pattern, $colonMatches)) {
+            $names = array_merge($names, $colonMatches[1]);
+        }
+
+        if (preg_match_all('/{([\w-]+)}/', $pattern, $braceMatches)) {
+            $names = array_merge($names, $braceMatches[1]);
+        }
+
+        return $names;
     }
 
     /**

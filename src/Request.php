@@ -14,6 +14,7 @@ class Request
     private $data;
     private $properties = []; // Dynamic properties storage
     private $dynamicHeaders = []; // For dynamically added headers
+    private $pathParams = []; // Path parameters extracted from route
 
     /**
      * Request constructor.
@@ -281,5 +282,37 @@ class Request
         parse_str($query, $queryParams);
 
         return $queryParams;
+    }
+
+    /**
+     * Sets the path parameters matched by the router.
+     *
+     * @param array $params
+     * @return void
+     */
+    public function setPathParams(array $params): void
+    {
+        $this->pathParams = $params;
+    }
+
+    /**
+     * Retrieves a specific path parameter by name.
+     *
+     * @param string $key
+     * @return string|null
+     */
+    public function getPathParam(string $key): ?string
+    {
+        return $this->pathParams[$key] ?? null;
+    }
+
+    /**
+     * Retrieves all path parameters matched for this request.
+     *
+     * @return array
+     */
+    public function getPathParams(): array
+    {
+        return $this->pathParams;
     }
 }
