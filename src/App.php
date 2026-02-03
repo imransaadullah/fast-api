@@ -29,6 +29,12 @@ class App
 
     /** @var array Rate limiting configuration */
     private $config = [];
+    
+    /** @var bool Whether rate limiting is enabled */
+    private $rateLimitEnabled = false;
+    
+    /** @var bool Whether rate limiting fails silently (logs but doesn't block) */
+    private $rateLimitSilentMode = false;
 
     /**
      * Initializes a new instance of the App class.
@@ -145,16 +151,106 @@ class App
 
     /**
      * Set rate limiting configuration (wrapper for RateLimiter)
+     * 
+     * @param int $maxRequests Maximum requests per time window
+     * @param int $timeWindow Time window in seconds
+     * @param bool $enabled Whether rate limiting is enabled (default: true for backward compatibility)
+     * @param bool $silentMode If true, logs violations but doesn't block requests (default: false)
+     * @return App
      */
-    public function setRateLimit(int $maxRequests, int $timeWindow)
+    public function setRateLimit(int $maxRequests, int $timeWindow, bool $enabled = true, bool $silentMode = false)
     {
         $this->config = [
             'max_requests' => $maxRequests,
-            'time_window' => $timeWindow
+            'time_window' => $timeWindow,
+            'enabled' => $enabled,
+            'silent_mode' => $silentMode
         ];
         
+        $this->rateLimitEnabled = $enabled;
+        $this->rateLimitSilentMode = $silentMode;
         $this->rateLimiter->configure($this->config);
         return $this;
+    }
+    
+    /**
+     * Enable rate limiting
+     * 
+     * @return App
+     */
+    public function enableRateLimit(): App
+    {
+        $this->rateLimitEnabled = true;
+        $this->config['enabled'] = true;
+        return $this;
+    }
+    
+    /**
+     * Disable rate limiting
+     * 
+     * @return App
+     */
+    public function disableRateLimit(): App
+    {
+        $this->rateLimitEnabled = false;
+        $this->config['enabled'] = false;
+        return $this;
+    }
+    
+    /**
+     * Set silent mode (log only, don't block)
+     * 
+     * @param bool $silent
+     * @return App
+     */
+    public function setRateLimitSilentMode(bool $silent = true): App
+    {
+        $this->rateLimitSilentMode = $silent;
+        $this->config['silent_mode'] = $silent;
+        return $this;
+    }
+    
+    /**
+     * Check if rate limiting is enabled
+     * 
+     * @return bool
+     */
+    public function isRateLimitEnabled(): bool
+    {
+        return $this->rateLimitEnabled;
+    }
+    
+    /**
+     * Check if rate limit is exceeded (for manual checking)
+     * 
+     * @param Request $request
+     * @return array|null Returns null if not limited, or array with limit info if limited
+     */
+    public function checkRateLimit(Request $request): ?array
+    {
+        if (!$this->rateLimitEnabled || empty($this->config)) {
+            return null;
+        }
+        
+        $ip = $this->getClientIp();
+        $key = "rate_limit:{$ip}";
+        $maxRequests = $this->config['max_requests'] ?? $_ENV['RATE_LIMIT_MAX'] ?? 100;
+        $timeWindow = $this->config['time_window'] ?? $_ENV['RATE_LIMIT_WINDOW'] ?? 60;
+        
+        $isLimited = $this->rateLimiter->isLimited($key, $maxRequests, $timeWindow);
+        
+        if ($isLimited) {
+            return [
+                'limited' => true,
+                'limit' => $maxRequests,
+                'window' => $timeWindow,
+                'storage' => $this->rateLimiter->getActiveStorage(),
+                'current_count' => $this->rateLimiter->getCurrentCount($key, $timeWindow),
+                'ttl' => $this->rateLimiter->getTTL($key)
+            ];
+        }
+        
+        return null;
     }
 
     /**
@@ -167,12 +263,17 @@ class App
 
     /**
      * Enforce rate limiting for incoming requests
-     * This is called automatically for every request if rate limiting is configured
+     * This is called automatically for every request if rate limiting is enabled
+     * 
+     * Behavior:
+     * - If disabled: Does nothing (backward compatible - no config means no rate limiting)
+     * - If enabled + silent mode: Logs violations but doesn't block
+     * - If enabled + normal mode: Blocks request with 429 response
      */
     private function enforceRateLimit(Request $request): void
     {
-        // Only enforce if rate limiting is configured
-        if (empty($this->config)) {
+        // Only enforce if rate limiting is explicitly enabled
+        if (!$this->rateLimitEnabled || empty($this->config)) {
             return;
         }
 
@@ -183,19 +284,34 @@ class App
         $maxRequests = $this->config['max_requests'] ?? $_ENV['RATE_LIMIT_MAX'] ?? 100;
         $timeWindow = $this->config['time_window'] ?? $_ENV['RATE_LIMIT_WINDOW'] ?? 60;
         
-        if ($this->rateLimiter->isLimited($key, $maxRequests, $timeWindow)) {
-            // Block the request with detailed response
-            (new Response())->setJsonResponse([
-                'error' => 1, 
-                'message' => 'Rate limit exceeded. Please try again later.',
-                'data' => [
-                    'limit' => $maxRequests,
-                    'window' => $timeWindow,
-                    'storage' => $this->rateLimiter->getActiveStorage(),
-                    'current_count' => $this->rateLimiter->getCurrentCount($key, $timeWindow),
-                    'ttl' => $this->rateLimiter->getTTL($key)
-                ]
-            ], 429)->send();
+        $limitInfo = $this->checkRateLimit($request);
+        
+        if ($limitInfo !== null) {
+            // Rate limit exceeded
+            $message = "Rate limit exceeded for IP: {$ip}";
+            $details = [
+                'limit' => $limitInfo['limit'],
+                'window' => $limitInfo['window'],
+                'storage' => $limitInfo['storage'],
+                'current_count' => $limitInfo['current_count'],
+                'ttl' => $limitInfo['ttl']
+            ];
+            
+            if ($this->rateLimitSilentMode) {
+                // Silent mode: Log only, don't block
+                error_log("[RATE LIMIT] {$message} - " . json_encode($details));
+                // Add rate limit info to request for middleware/handlers to inspect
+                $request->setAttribute('rate_limit_exceeded', $limitInfo);
+            } else {
+                // Normal mode: Block the request
+                error_log("[RATE LIMIT] Blocking request - {$message}");
+                (new Response())->setJsonResponse([
+                    'error' => 1, 
+                    'message' => 'Rate limit exceeded. Please try again later.',
+                    'data' => $details
+                ], 429)->send();
+                exit; // Ensure script stops after sending response
+            }
         }
     }
 
@@ -334,6 +450,13 @@ class App
 
     /**
      * Runs the application, dispatching the incoming HTTP request to the appropriate route handler.
+     * 
+     * Rate Limiting Behavior:
+     * - Rate limiting is OPT-IN via setRateLimit() - it will NOT run unless explicitly enabled
+     * - When enabled, can be set to silent mode (logs only, doesn't block) or blocking mode
+     * - Use enableRateLimit()/disableRateLimit() to control at runtime
+     * - Use setRateLimitSilentMode() to enable logging without blocking
+     * - Use checkRateLimit() to manually check status in middleware/handlers
      *
      * @return void
      */
@@ -365,7 +488,8 @@ class App
         $data = $data ?? [];
         $request = new Request($requestMethod, $requestUri, $data);
 
-        // Enforce rate limiting if configured
+        // Enforce rate limiting if explicitly enabled
+        // Note: Rate limiting is OPT-IN and will not run unless setRateLimit() is called
         $this->enforceRateLimit($request);
 
         // Execute middlewares using chaining
