@@ -50,6 +50,12 @@ $token = new Token('api-users', null, true); // With SSL
 
 The Token class uses environment variables for configuration:
 
+> **Key sizes (since v2.9.0, php-jwt 7):** HS256 secrets must be at least 32 bytes
+> (HS384: 48, HS512: 64) and RSA keys at least 2048 bits. Shorter keys throw
+> `DomainException: Provided key is too short`. Generate a secret with
+> `php -r 'echo bin2hex(random_bytes(32));'` and an RSA pair with
+> `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem && openssl pkey -in private.pem -pubout -out public.pem`.
+
 ```php
 // Set environment variables
 $_ENV['SECRET_KEY'] = 'your-secret-key';

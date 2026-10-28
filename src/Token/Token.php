@@ -107,9 +107,9 @@ class Token extends JWT
         $this->timezone = $_ENV['TIMEZONE'];
         $this->issuer = $_ENV['TOKEN_ISSUER'];
         $this->audience = $audience;
-        $this->custom_time = $timeHnadler ?? new CustomTime();
+        $this->custom_time = $timeHnadler ?? CustomTime::getInstance();
         $this->not_before = $this->custom_time->get_timestamp();
-        $this->expiry = ($timeHnadler ?? new CustomTime())->add_minutes(5)->get_timestamp();
+        $this->expiry = ($timeHnadler ?? CustomTime::getInstance())->add_minutes(5)->get_timestamp();
     }
 
     /**
